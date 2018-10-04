@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # ==============================================================================
-# from tensorflow.contrib import distributions as _distributions
 import tensorflow as tf
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
@@ -36,5 +35,3 @@ for dist_name in sorted(dir(_distributions)):
 
 __all__ = ["MultivariateNormalTriL"]
 
-# print(sorted(globals().keys()))
-# print(type(globals()['Beta']))
