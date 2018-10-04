@@ -29,7 +29,7 @@ class ANode(abc.ABC):
   ANodes represent relevant stops in the flow of information through a
   statistical model.
   
-  Ex: The Variational Autoencoder Statistical Model graph is given by: 
+  Ex: The Variational Autoencoder Model graph is given by: 
   
   [0->d_X] => [d_X->d_Z] => [d_Z->d_X] => [d_X->0]
   
