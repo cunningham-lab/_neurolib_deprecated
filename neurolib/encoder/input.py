@@ -190,7 +190,7 @@ class NormalInputNode(InputNode):
     order to declare the secondary outputs.
     
     Args:
-      label (int): A unique integer identifier for the node.:
+      label (int): A unique integer identifier for the node.
       
       output_shape (int or list of ints): The shape of the output encoding.
           This excludes the 0th dimension - batch size - and the 1st dimension
