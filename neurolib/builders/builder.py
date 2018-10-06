@@ -97,7 +97,7 @@ class Builder(abc.ABC):
     
     Builders MUST implement this method
     """
-    raise NotImplementedError("Builders must implement build")
+    raise NotImplementedError("Builders must implement _build")
   
   def visualize_model_graph(self, filename="model_graph"):
     """
