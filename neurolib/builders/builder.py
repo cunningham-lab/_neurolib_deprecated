@@ -31,7 +31,7 @@ class Builder(abc.ABC):
   ii) defines directed links between them representing tensors
   iii) builds a tensorflow graph from the Model graph 
   
-  A Builder object MUST implement the method _build()
+  A Builder object MUST implement the method build()
   """
   def __init__(self, scope, batch_size=None):
     """
@@ -101,7 +101,7 @@ class Builder(abc.ABC):
     
     Builders MUST implement this method
     """
-    raise NotImplementedError("Builders must implement _build")
+    raise NotImplementedError("Builders must implement build")
   
   def visualize_model_graph(self, filename="model_graph"):
     """
