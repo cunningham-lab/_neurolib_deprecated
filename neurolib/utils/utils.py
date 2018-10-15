@@ -18,36 +18,43 @@ import tensorflow as tf
 
 DTYPE = tf.float32
 
+# pylint: disable=bad-indentation, no-member, protected-access
+
 def variable_in_cpu(name, shape, initializer, collections=None):
     """
     """
     with tf.device('/cpu:0'):
-        var = tf.get_variable(name, shape, dtype=DTYPE, initializer=initializer,
+        var = tf.get_variable(name,
+                              shape,
+                              dtype=DTYPE,
+                              initializer=initializer,
                               collections=collections)
     return var
 
 
-def make_var_name(scope, name):
-  return scope + '/' + name + ':0'
+make_var_name = lambda scope, name : scope + '/' + name + ':0' 
 
 
 def make_data_iterator(data, batch_size=1, shuffle=True):
-    """
-    Iterate over data (simple)
-    
-    Args:
-      TODO:
-    """
-    nsamps = len(data[0])
-    l_inds = np.arange(nsamps)
-    if shuffle: 
-        np.random.shuffle(l_inds)
-    
-    for i in range(0, nsamps, batch_size):
-        yield [ d[l_inds[i:i+batch_size]] for d in data ]
+  """
+  Iterate over data (simple)
+  
+  Args:
+    TODO:
+  """
+  nsamps = len(data[0])
+  l_inds = np.arange(nsamps)
+  if shuffle: 
+      np.random.shuffle(l_inds)
+  
+  for i in range(0, nsamps, batch_size):
+      yield [ d[l_inds[i:i+batch_size]] for d in data ]
         
         
 def check_name(f):
+  """
+  Check that the name of a node has not been taken
+  """
   def f_checked(obj, *args, **kwargs):
     if 'name' in kwargs:
       if kwargs['name'] in obj.nodes:
@@ -56,5 +63,3 @@ def check_name(f):
     return f(obj, *args, **kwargs)
   
   return f_checked
-        
-        
