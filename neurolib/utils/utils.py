@@ -33,6 +33,10 @@ def make_var_name(scope, name):
 
 def make_data_iterator(data, batch_size=1, shuffle=True):
     """
+    Iterate over data (simple)
+    
+    Args:
+      TODO:
     """
     nsamps = len(data[0])
     l_inds = np.arange(nsamps)
@@ -41,8 +45,8 @@ def make_data_iterator(data, batch_size=1, shuffle=True):
     
     for i in range(0, nsamps, batch_size):
         yield [ d[l_inds[i:i+batch_size]] for d in data ]
-
-
+        
+        
 def check_name(f):
   def f_checked(obj, *args, **kwargs):
     if 'name' in kwargs:
