@@ -22,6 +22,8 @@ from neurolib.encoder import _globals as dist_dict
 from neurolib.encoder.anode import ANode
 from abc import abstractmethod
 
+# pylint: disable=bad-indentation, no-member
+
 class InputNode(ANode):
   """
   An InputNode represents a source of information in the Model graph (MG).
@@ -39,7 +41,9 @@ class InputNode(ANode):
   """
   num_expected_inputs = 0
   
-  def __init__(self, label, main_output_shape, batch_size=None,
+  def __init__(self, label,
+               output_shape=None,
+               batch_size=None,
                builder=None):
     """
     Initialize the InputNode
@@ -47,7 +51,7 @@ class InputNode(ANode):
     Args:
       label (int): A unique integer identifier for the node. 
       
-      main_output_shape (int or list of ints): The shape of the main output
+      output_shape (int or list of ints): The shape of the main output
           code. This excludes the 0th dimension - batch size - and the 1st
           dimension when the data is a sequence - number of steps.
       
@@ -61,35 +65,51 @@ class InputNode(ANode):
     """
     self.batch_size = batch_size
     self.builder = builder
-        
-    # Deal with several possible types of output_shapes
-    if isinstance(main_output_shape, int):
-      main_output_shape = [batch_size] + [main_output_shape]
-    elif isinstance(main_output_shape, list):
-      main_output_shape = [batch_size] + main_output_shape
-    else:
-      raise ValueError("The main_output_shape of an InputNode must be an int or "
-                       "a list of ints")
-    self.main_oshape = main_output_shape
     super(InputNode, self).__init__(label)
+        
+    # Deal with several possible types of main_output_shapes
+    self._is_numsteps_static = True
+    if output_shape is None:
+      raise ValueError("Missing required `output_shape` parameter.")
 
-    self._oslot_to_shape[0] = main_output_shape
+    if isinstance(output_shape, int):
+      main_oshape = [batch_size] + [output_shape]
+      self._is_sequence = False
+    elif isinstance(output_shape, list):
+      if len(output_shape) == 1:
+        self._is_sequence = False
+      elif len(output_shape) == 2:
+        self._is_sequence = True
+        if output_shape[0] is None:
+          self._is_numsteps_static = False
+      else:
+        raise ValueError("`len(output_shape) > 2` not implemented")
+      main_oshape = [batch_size] + output_shape
+    else:
+      raise TypeError("`output_shape` parameter must be of `int` or `list`"
+                      "type")
+    self.main_oshape = self._oslot_to_shape[0] = main_oshape
+    
+    self.main_dim = self.main_oshape[-1]
+    if any([i is None for i in self.main_oshape]):
+      self._dummy_ph = tf.placeholder(tf.float32, self.main_oshape,
+                                      self.name + '_dummy')
 
     # Add visualization
     self.vis = pydot.Node(self.name)
   
-  @ANode.num_inputs.setter
-  def num_inputs(self, value):
+  @ANode.num_declared_inputs.setter
+  def num_declared_inputs(self):
     """
-    Setter for num_inputs
+    Setter for num_declared_inputs
     """
     raise AttributeError("Assignment to attribute num_inputs of InputNode is "
                          " disallowed. num_inputs is fixed to 0 for an InputNode")
 
-  @ANode.num_outputs.setter
-  def num_outputs(self, value):
+  @ANode.num_declared_outputs.setter
+  def num_declared_outputs(self, value):
     """
-    Setter for num_outputs
+    Setter for num_declared_outputs
     """
     if value > self.num_expected_outputs:
       raise AttributeError("Attribute num_outputs of InputNodes must be either 0 "
@@ -116,9 +136,10 @@ class PlaceholderInputNode(InputNode):
     num_expected_outputs = 1
     num_expected_inputs = 0
   """
+  _requires_builder = False
   num_expected_outputs = 1
   
-  def __init__(self, label, output_shape, name=None, batch_size=None,
+  def __init__(self, label, main_oshape, name=None, batch_size=None,
                **dirs):
     """
     Initialize the PlaceholderInputNode
@@ -126,7 +147,7 @@ class PlaceholderInputNode(InputNode):
     Args:
       label (int): A unique integer identifier for the node.:
       
-      output_shape (int or list of ints): The shape of the output encoding.
+      main_oshape (int or list of ints): The shape of the output encoding.
           This excludes the 0th dimension - batch size - and the 1st dimension
           when the data is a sequence - number of steps.
           
@@ -142,13 +163,13 @@ class PlaceholderInputNode(InputNode):
           node.
     """
     self.name = "In_" + str(label) if name is None else name
-    super(PlaceholderInputNode, self).__init__(label, output_shape,
-                                               batch_size=batch_size,
-                                               builder=None)
-    
-    self._update_directives(**dirs)
+    super(PlaceholderInputNode, self).__init__(label, main_oshape,
+                                               batch_size=batch_size)
+    self._update_default_directives(**dirs)
 
-  def _update_directives(self, **dirs):
+    self.free_oslots = list(range(self.num_expected_outputs))
+
+  def _update_default_directives(self, **dirs):
     """
     Update default directives
     """
@@ -180,10 +201,11 @@ class NormalInputNode(InputNode):
   Class attributes:
     num_expected_outputs = 3
     num_expected_inputs = 0
-  """  
+  """
+  _requires_builder = True
   num_expected_outputs = 3
 
-  def __init__(self, label, output_shape, builder, name=None, batch_size=1,
+  def __init__(self, label, main_oshape, builder, name=None, batch_size=1,
                **dirs):
     """
     Initialize the NormalInputNode. A builder object argument is MANDATORY in
@@ -192,7 +214,7 @@ class NormalInputNode(InputNode):
     Args:
       label (int): A unique integer identifier for the node.
       
-      output_shape (int or list of ints): The shape of the output encoding.
+      main_oshape (int or list of ints): The shape of the output encoding.
           This excludes the 0th dimension - batch size - and the 1st dimension
           when the data is a sequence - number of steps.
           
@@ -207,28 +229,42 @@ class NormalInputNode(InputNode):
       dirs (dict): A set of user specified directives for constructing this
           node.
     """
-    if builder is None:
-      raise ValueError("A builder must be provided")
-    
     self.name = "Normal_" + str(label) if name is None else name
-    super(PlaceholderInputNode, self).__init__(label, output_shape,
+    super(NormalInputNode, self).__init__(label, main_oshape,
                                                batch_size=batch_size,
                                                builder=builder)
-    
-    self._update_directives(**dirs)
-    
+    self._update_default_directives(**dirs)
+
+    self.free_oslots = list(range(self.num_expected_outputs))
     self._declare_secondary_outputs()
     
-  def _update_directives(self, **dirs):
+    
+  def _update_default_directives(self, **dirs):
     """
     Update the node directives
     """
-    self.main_oshape = self.main_oshape[1:]
+    oshape = self.main_oshape[1:]
     
-    mean_init = np.zeros(self.main_oshape)
-    scale_init = np.eye(self.main_oshape[-1])
+    # BEFORE
+#     mean_init = tf.zeros(oshape)
+#     scale_init = np.eye(oshape[-1])
+#     self.directives = {'output_mean_name' : self.name + '_mean',
+#                        'output_cholesky_name' : self.name + '_cholesky',
+#                        'mean_init' : mean_init,
+#                        'scale_init' : scale_init}
+    
+    if self._is_numsteps_static:
+      mean_init = tf.zeros(oshape)
+      scale_init = np.eye(oshape[:-1] + [self.main_dim]*2)
+    else:
+      dummy = tf.placeholder(tf.float32, [None, self.main_dim], 'd')
+      mean_init = tf.zeros_like(dummy)
+      nsteps = tf.shape(mean_init)[0]
+      scale = tf.eye(self.main_dim, batch_shape=[nsteps])
+      scale_init = tf.linalg.LinearOperatorFullMatrix(scale)
+
     self.directives = {'output_mean_name' : self.name + '_mean',
-                       'output_cholesky_name' : self.name + '_cholesky',
+                       'output_scale_name' : self.name + '_scale',
                        'mean_init' : mean_init,
                        'scale_init' : scale_init}
     self.directives.update(dirs)
@@ -237,13 +273,13 @@ class NormalInputNode(InputNode):
     """
     Declare the statistics of the normal as secondary outputs. 
     """
-    oshape = self.main_oshape
+    oshape = self.main_oshape[1:]
     self._oslot_to_shape[1] = oshape # mean oslot
     o1 = self.builder.addOutput(name=self.directives['output_mean_name'])
     self.builder.addDirectedLink(self, o1, oslot=1)
     
-    self._oslot_to_shape[2] = oshape*2 # std oslot  
-    o2 = self.builder.addOutput(name=self.directives['output_cholesky_name'])
+    self._oslot_to_shape[2] = oshape[:-1] + [oshape[-1]]*2 # stddev oslot  
+    o2 = self.builder.addOutput(name=self.directives['output_scale_name'])
     self.builder.addDirectedLink(self, o2, oslot=2)
     
   def _build(self):
@@ -257,22 +293,33 @@ class NormalInputNode(InputNode):
     Assigns a cholesky decomposition of the covariance from self.dist to
     _oslot_to_otensor[2]
     """
-    out_shape = self.main_oshape
-    
     mean = self.directives['mean_init']
     scale = self.directives['scale_init']
+    print("shapes:", tf.shape(mean), '\n', tf.shape(scale.to_dense()))
     self.dist = dist = dist_dict['MultivariateNormalLinearOperator'](loc=mean,
                                                                      scale=scale)
     
+#     out_shape = self.main_oshape
+#     print(self.name, "out_shape", out_shape)
+#     out_shape = tf.shape(self._dummy_ph)
+#     self._oslot_to_otensor[0] = dist.sample(sample_shape=out_shape,
+#                                             name=self.name)
+    dummy = tf.placeholder(tf.float32, [self.batch_size], 'dummy')
+    out_shape = tf.shape(dummy)
     self._oslot_to_otensor[0] = dist.sample(sample_shape=out_shape,
                                             name=self.name)
-    self._oslot_to_otensor[1] = dist.mean()
-    self._oslot_to_otensor[2] = dist.scale
+    print("shapes compare:", tf.shape(self._oslot_to_otensor[0]),
+          self._oslot_to_shape[0])
+#     self._oslot_to_otensor[1] = dist.mean()
+    self._oslot_to_otensor[1] = dist.loc
+    print("shapes compare:", tf.shape(self._oslot_to_otensor[1]),
+          self._oslot_to_shape[1])
+    self._oslot_to_otensor[2] = dist.scale.to_dense()
+    print("shapes compare:", tf.shape(self._oslot_to_otensor[2]),
+          self._oslot_to_shape[2])
 
     self._is_built = True
 
 
 if __name__ == '__main__':
   print(dist_dict.keys())  # @UndefinedVariable
-  
-  

@@ -18,6 +18,7 @@ import tensorflow as tf
 from neurolib.encoder.basic import InnerNode
 from neurolib.encoder import act_fn_dict, layers_dict
 
+# pylint: disable=bad-indentation, no-member
 
 class DeterministicNNNode(InnerNode):
   """
@@ -82,6 +83,8 @@ class DeterministicNNNode(InnerNode):
     self.main_oshape = self._oslot_to_shape[0] = main_oshape
     
     self._update_directives(**dirs)
+    
+    self.free_oslots = list(range(self.num_expected_outputs))
     
   def _update_directives(self, **dirs):
     """

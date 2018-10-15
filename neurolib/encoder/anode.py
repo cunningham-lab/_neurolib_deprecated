@@ -17,7 +17,7 @@ import abc
 from abc import abstractmethod
 from bidict import bidict
 
-from neurolib.encoder import *
+# pylint: disable=bad-indentation
 
 class ANode(abc.ABC):
   """
