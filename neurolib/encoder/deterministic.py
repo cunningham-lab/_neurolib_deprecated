@@ -31,11 +31,14 @@ class DeterministicNNNode(InnerNode):
     num_expected_outputs = 1    
   """
   _requires_builder = False
-  num_expected_inputs = 1
   num_expected_outputs = 1
   
-  def __init__(self, label, output_shape, batch_size=None,
-               name=None, **dirs):
+  def __init__(self, label,
+               num_expected_inputs,
+               output_shape,
+               batch_size=None,
+               name=None,
+               **dirs):
     """
     Initialize a DeterministicNNNode.
     
@@ -60,21 +63,27 @@ class DeterministicNNNode(InnerNode):
     self.name = "Det_" + str(label) if name is None else name
     super(DeterministicNNNode, self).__init__(label)
     
+    self.num_expected_inputs = num_expected_inputs
+    self._is_numsteps_static = True
+    self._is_sequence = False
     if isinstance(output_shape, int):
-      output_shape = [batch_size] + [output_shape]
+      main_oshape = [batch_size] + [output_shape]
     elif isinstance(output_shape, list):
-      if isinstance(output_shape[0], int):
-        output_shape = [batch_size] + output_shape
-      elif isinstance(output_shape[0], list):
-        output_shape = [batch_size] + output_shape[0]
+      if len(output_shape) == 2:
+        self._is_sequence = True
+        if output_shape[0] is None:
+          self._is_numsteps_static = False
+      elif len(output_shape) > 2:
+        raise NotImplementedError("Output shape > 2 not implemented")
+      main_oshape = [batch_size] + output_shape
     else:
       raise ValueError("The output_shape of a DeterministicNNNode must be an int or "
                        "a list of ints")
-    self._oslot_to_shape[0] = output_shape
+    self.main_oshape = self._oslot_to_shape[0] = main_oshape
     
     self._update_directives(**dirs)
     
-  def _update_directives(self, directives):
+  def _update_directives(self, **dirs):
     """
     Update the node directives
     """
@@ -82,42 +91,36 @@ class DeterministicNNNode(InnerNode):
                        'num_nodes' : 128,
                        'activation' : 'relu',
                        'net_grow_rate' : 1.0}
-    self.directives.update(directives)
+    self.directives.update(dirs)
     
-  @InnerNode.num_inputs.setter
-  def num_inputs(self, value):
+  @InnerNode.num_declared_inputs.setter
+  def num_declared_inputs(self, value):
     """
     Setter for self.num_inputs
     """
     if value > self.num_expected_inputs:
-      raise AttributeError("Attribute num_inputs of DeterministicNNNode "
-                           "should not be greather than ",
+      raise ValueError("Attribute num_inputs of DeterministicNNNode "
+                           "should not be greater than ",
                            self.num_expected_inputs)
     self._num_declared_inputs = value
 
-  @InnerNode.num_outputs.setter
-  def num_outputs(self, value):
+  @InnerNode.num_declared_outputs.setter
+  def num_declared_outputs(self, value):
     """
     Setter for self.num_outputs
     """
     if value > self.num_expected_outputs:
-      raise AttributeError("Attribute num_outputs of DeterministicNNNode must "
-                           "should not be greather than ", self.num_expected_outputs)
+      raise ValueError("Attribute num_outputs of DeterministicNNNode must "
+                           "not be greater than ", self.num_expected_outputs)
     self._num_declared_outputs = value
         
-  def _build(self):
+  def _build(self, islot_to_itensors=None):
     """
     Build the node
-    
-    A) Scan the directives for the properties of the feedforward network
-    
-    B) Builds the tensorflow graph from the found directives
     """
     dirs = self.directives
     
-    x_in = self._islot_to_itensor[0]
-
-    # Stage A
+    # Get directives
     try:
       if 'layers' in dirs:
         num_layers = len(dirs['layers'])
@@ -138,21 +141,27 @@ class DeterministicNNNode(InnerNode):
     except AttributeError as err:
       raise err
   
-    # Stage B
+    # Build
+    if islot_to_itensors is None:
+      islot_to_itensors = self._islot_to_itensor
+    itensors = list(zip(*sorted(islot_to_itensors.items())))[1]
+    _input = tf.concat(itensors, axis=-1)
     for n, layer in enumerate(layers):
       output_dim = self._oslot_to_shape[0][-1]
       if n == 0:
-        hid_layer = layer(x_in, num_nodes, activation_fn=activations[n])
+        hid_layer = layer(_input, num_nodes, activation_fn=activations[n])
       elif n == num_layers-1:
         output = layer(hid_layer, output_dim, activation_fn=activations[n])
       else:
         hid_layer = layer(hid_layer, int(num_nodes*net_grow_rate),
                           activation_fn=activations[n])
     
-    output_name = self.name + '_out' # + str(oslot) ?
+    output_name = self.name + '_out'
     self._oslot_to_otensor[0] = tf.identity(output, output_name) 
       
     self._is_built = True
+    
+    return output
 
 
 class DeterministicCustomNode(InnerNode):
