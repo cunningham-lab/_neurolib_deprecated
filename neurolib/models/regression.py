@@ -66,7 +66,9 @@ class Regression(Model):
     
     Args:
       input_dim (int): The number of features (dimension of the input variable)
-      output_dim (int): The 
+      output_dim (int): The output dimension
+      builder (StaticBuilder): An instance of Builder used to build a custom
+          Regression model
     """
     self.input_dim = input_dim
     self.output_dim = output_dim
