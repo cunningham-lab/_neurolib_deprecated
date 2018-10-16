@@ -18,6 +18,7 @@ import tensorflow as tf
 
 from neurolib.encoder.anode import ANode
 
+# pylint: disable=bad-indentation, no-member, protected-access
 
 class OutputNode(ANode):
   """
@@ -66,7 +67,7 @@ class OutputNode(ANode):
     self._num_declared_inputs = value
 
   @ANode.num_declared_outputs.setter
-  def num_declared_outputs(self, value):
+  def num_declared_outputs(self):
     """
     Setter for num_declared_outputs. 
     

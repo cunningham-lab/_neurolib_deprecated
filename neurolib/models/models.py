@@ -20,16 +20,34 @@ from abc import abstractmethod
 
 class Model(abc.ABC):
   """
-  An abstract class for Statistical Models.
+  An abstract class for Machine Learning Models.
   
   Classes that inherit from the abstract class Model will be seen by the client.
-  Models are created through a Builder object, which in turn has an interface
-  via which the client may add Nodes and Links to the Model as desired.
-   
+  Models are created through a Builder object, which in turn is endowed with an
+  interface via which the client may add Nodes and Links to the Model as
+  desired.
+  
+  There are two ways of invoking a Model.
+  
+  a) Default
+    An instance of Model is created using a set of mandatory directives specific
+    to the Model as in
+      model = Model(*args, **dirs)
+    Some control over the model hyperparameters is provided through the
+    directives `**dirs`. The Model Builder object is automatically created.
+    
+  b) Custom
+    The instance of Model is created through a custom Builder object
+      model = Model(builder=mybuilder)
+    where the custom builder object is used to declare the graphical model as
+    desired by the user. This provides a lot more control over the model
+    hyperparameters since each node of the Model graph can be independently
+    tweaked.
+    
   The Model classes should implement at the very least the following methods
   
-  train(data_train, [data_valid,...])
-  sample(n_samps)
+  train(...)
+  sample(...)
   """
   def __init__(self):
     """
