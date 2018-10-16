@@ -28,22 +28,45 @@ from neurolib.utils.graphs import get_session
 class Regression(Model):
   """
   The Regression Model is the simplest possible model in the Encoder paradigm.
-  It consists of a single chain of encoders with a single input and output.
+  It consists of a single submodel, with a single input and a single output. In
+  between there may lie any directed, acyclic graph formed of deterministic
+  encoders nodes.
   
-  in => E_1 => E_2 => ... => E_n => out
+  Ex: A chain of encoders with a single input and output is a Regression model:
   
-  The 
+  I1[ -> d_0] => E1[d_0 -> d_1] => ... => O1[d_{n} -> ]
   
-  Linear Regression is achieved by initializing Regression with num_layers=1 and
-  activation=None
+  since it has a single Input node and a single Output node. The following
+  directed graph, with the input flowing towards the output through 2 different
+  encoders is also a Regression model:
+  
+  I1[ -> d_0] => E1[d_0 -> d_1], E2[d_0 -> d_2]
+  E1[d_0 -> d_1], E2[d_0 -> d_2] => O1[d_1 + d_2 -> ]
+  
+  Any user defined Regression must respect the names of the mandatory Input and
+  Output nodes, which are fixed to "features" and"response" respectively. 
+  
+  
+  The default Regression instance builds a Model graph with just one inner
+  Encoder
+  
+  I1[ -> d_0] => E1[d_0 -> d_1] => O1[d_{1} -> ]
+  
+  The inner encoder node is parameterized by a neural network which can be
+  controlled through the directives. For example, linear regression is achieved
+  by initializing Regression with num_layers=1 and activation=None
   """
   def __init__(self,
                input_dim=None,
-               output_dim=None,
+               output_dim=1,
                builder=None,
                **dirs):
     """
     Initialize the Regression Model
+    
+    Args:
+      input_dim (int): The number of features (dimension of the input variable)
+      output_dim (int): The 
     """
     self.input_dim = input_dim
     self.output_dim = output_dim
@@ -61,6 +84,8 @@ class Regression(Model):
         raise ValueError("Both the input dimension (in_dims) and the output "
                          "dimension (out_dims) are necessary in order to "
                          "specify build the default Regression.")
+      elif output_dim > 1:
+        raise NotImplementedError("Multivariate regression is not implemented")
       
     # Defined on build
     self._adj_list = None
@@ -105,22 +130,6 @@ class Regression(Model):
       print("OutputNode(input_dim={}, name='response')".format(self.output_dim))
       print("\nThis is an absolute minimum requirement and NOT a guarantee that a custom "
             "model will be successfully trained (read the docs for more).")
-#     
-#   def _get_directives(self):
-#     """
-#     Return two directives to build the two encoders that make up the default
-#     Model.
-#     
-#     Directives:
-#       nnodes_1stlayer_encj : The number of _nodes in the first hidden layer of
-#             the encoder j
-#       ntwrk_grow_rate_encj : The ratio between the number of _nodes of subsequent
-#             layers
-#       TODO: ...
-#     """
-#     enc_directives = self.directives
-#     in_directives = {}
-#     return enc_directives, in_directives
 
   def build(self):
     """
@@ -167,13 +176,6 @@ class Regression(Model):
     Check that the user-declared build is consistent with the Regression class
     """
     pass
-
-#   def _define_cost(self):
-#     """
-#     TODO: Is this function necessary?
-#     """
-#     cost = self.directives['cost']
-#     return cost(self._nodes)
     
   def update(self, dataset):
     """
