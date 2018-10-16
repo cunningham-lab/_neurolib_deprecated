@@ -149,15 +149,18 @@ class DeterministicNNNode(InnerNode):
       islot_to_itensors = self._islot_to_itensor
     itensors = list(zip(*sorted(islot_to_itensors.items())))[1]
     _input = tf.concat(itensors, axis=-1)
-    for n, layer in enumerate(layers):
-      output_dim = self._oslot_to_shape[0][-1]
-      if n == 0:
-        hid_layer = layer(_input, num_nodes, activation_fn=activations[n])
-      elif n == num_layers-1:
-        output = layer(hid_layer, output_dim, activation_fn=activations[n])
-      else:
-        hid_layer = layer(hid_layer, int(num_nodes*net_grow_rate),
-                          activation_fn=activations[n])
+    output_dim = self._oslot_to_shape[0][-1]
+    if num_layers == 1:
+      output = layers[0](_input, output_dim, activation_fn=activations[0])
+    else:
+      for n, layer in enumerate(layers):
+        if n == 0:
+          hid_layer = layer(_input, num_nodes, activation_fn=activations[n])
+        elif n == num_layers-1:
+          output = layer(hid_layer, output_dim, activation_fn=activations[n])
+        else:
+          hid_layer = layer(hid_layer, int(num_nodes*net_grow_rate),
+                            activation_fn=activations[n])
     
     output_name = self.name + '_out'
     self._oslot_to_otensor[0] = tf.identity(output, output_name) 
