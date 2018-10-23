@@ -17,7 +17,7 @@ import abc
 from abc import abstractmethod
 from bidict import bidict
 
-# pylint: disable=bad-indentation
+# pylint: disable=bad-indentation, no-member, protected-access
 
 class ANode(abc.ABC):
   """
@@ -92,7 +92,7 @@ class ANode(abc.ABC):
     self._parent_label_to_islot = bidict({})
     
     self._is_built = False
-    
+  
   @property
   def num_declared_inputs(self):
     """
@@ -104,13 +104,16 @@ class ANode(abc.ABC):
     return self._num_declared_inputs
   
   @num_declared_inputs.setter
-  @abstractmethod
   def num_declared_inputs(self, value):
     """
-    Setter for num_declared_inputs
+    Setter for self.num_declared_inputs
     """
-    raise NotImplementedError("Please implement me")
-  
+    if value > self.num_expected_inputs:
+      raise ValueError("Attribute num_inputs of {} must not be greater "
+                       "than {}".format(self.__class__.__name__,
+                                        self.num_expected_inputs))
+    self._num_declared_inputs = value
+    
   @property
   def num_declared_outputs(self):
     """
@@ -122,12 +125,15 @@ class ANode(abc.ABC):
     return self._num_declared_outputs
   
   @num_declared_outputs.setter
-  @abstractmethod
   def num_declared_outputs(self, value):
     """
-    Setter for num_oututs
+    Setter for self.num_declared_outputs
     """
-    raise NotImplementedError("Please implement me")
+    if value > self.num_expected_outputs:
+      raise ValueError("Attribute num_outputs of {} must "
+                           "not be greater than {}".format(self.__class__.__name__,
+                                                           self.num_expected_outputs))
+    self._num_declared_outputs = value
   
   def get_islot_shape(self, islot=0):
     """
@@ -141,20 +147,6 @@ class ANode(abc.ABC):
     """
     return self._oslot_to_shape[oslot]
 
-#   def get_output_shapes(self):
-#     """
-#     Returns a dictionary whose keys are the oslots of the ANode and whose values
-#     are the outgoing shapes.
-#     """
-#     return self._oslot_to_shape
-  
-#   def get_input_shapes(self):
-#     """
-#     Returns a dictionary whose keys are the oslots of the ANode and whose values
-#     are the outgoing shapes.
-#     """
-#     return self._islot_to_shape
-  
   def get_inputs(self):
     """
     Return a dictionary whose keys are the islots of the ANode and whose values

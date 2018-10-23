@@ -95,28 +95,7 @@ class DeterministicNNNode(InnerNode):
                        'activation' : 'relu',
                        'net_grow_rate' : 1.0}
     self.directives.update(dirs)
-    
-  @InnerNode.num_declared_inputs.setter
-  def num_declared_inputs(self, value):
-    """
-    Setter for self.num_inputs
-    """
-    if value > self.num_expected_inputs:
-      raise ValueError("Attribute num_inputs of DeterministicNNNode "
-                           "should not be greater than ",
-                           self.num_expected_inputs)
-    self._num_declared_inputs = value
-
-  @InnerNode.num_declared_outputs.setter
-  def num_declared_outputs(self, value):
-    """
-    Setter for self.num_outputs
-    """
-    if value > self.num_expected_outputs:
-      raise ValueError("Attribute num_outputs of DeterministicNNNode must "
-                           "not be greater than ", self.num_expected_outputs)
-    self._num_declared_outputs = value
-        
+            
   def _build(self, islot_to_itensors=None):
     """
     Build the node
