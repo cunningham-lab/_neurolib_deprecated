@@ -42,7 +42,7 @@ class InputNode(ANode):
   num_expected_inputs = 0
   
   def __init__(self, label,
-               output_shape=None,
+               num_features=None,
                batch_size=None,
                builder=None):
     """
@@ -51,7 +51,7 @@ class InputNode(ANode):
     Args:
       label (int): A unique integer identifier for the node. 
       
-      output_shape (int or list of ints): The shape of the main output
+      num_features (int or list of ints): The shape of the main output
           code. This excludes the 0th dimension - batch size - and the 1st
           dimension when the data is a sequence - number of steps.
       
@@ -69,26 +69,27 @@ class InputNode(ANode):
         
     # Deal with several possible types of main_output_shapes
     self._is_numsteps_static = True
-    if output_shape is None:
-      raise ValueError("Missing required `output_shape` parameter.")
+    if num_features is None:
+      raise ValueError("Missing required `num_features` parameter.")
 
-    if isinstance(output_shape, int):
-      main_oshape = [batch_size] + [output_shape]
-      self._is_sequence = False
-    elif isinstance(output_shape, list):
-      if len(output_shape) == 1:
-        self._is_sequence = False
-      elif len(output_shape) == 2:
-        self._is_sequence = True
-        if output_shape[0] is None:
-          self._is_numsteps_static = False
-      else:
-        raise ValueError("`len(output_shape) > 2` not implemented")
-      main_oshape = [batch_size] + output_shape
-    else:
-      raise TypeError("`output_shape` parameter must be of `int` or `list`"
-                      "type")
-    self.main_oshape = self._oslot_to_shape[0] = main_oshape
+    self.num_features = num_features
+#     if isinstance(num_features, int):
+#       main_oshape = [batch_size] + [num_features]
+#       self._is_sequence = False
+#     elif isinstance(num_features, list):
+#       if len(num_features) == 1:
+#         self._is_sequence = False
+#       elif len(num_features) == 2:
+#         self._is_sequence = True
+#         if num_features[0] is None:
+#           self._is_numsteps_static = False
+#       else:
+#         raise ValueError("`len(num_features) > 2` not implemented")
+#       main_oshape = [batch_size] + num_features
+#     else:
+#       raise TypeError("`num_features` parameter must be of `int` or `list`"
+#                       "type")
+    self.main_oshape = self._oslot_to_shape[0] = [batch_size] + [num_features]
     
     self.main_dim = self.main_oshape[-1]
     if any([i is None for i in self.main_oshape]):
@@ -238,7 +239,6 @@ class NormalInputNode(InputNode):
     self.free_oslots = list(range(self.num_expected_outputs))
     self._declare_secondary_outputs()
     
-    
   def _update_default_directives(self, **dirs):
     """
     Update the node directives
@@ -254,8 +254,12 @@ class NormalInputNode(InputNode):
 #                        'scale_init' : scale_init}
     
     if self._is_numsteps_static:
+      print("oshape, self.main_dim", oshape, self.main_dim)
       mean_init = tf.zeros(oshape)
-      scale_init = np.eye(oshape[:-1] + [self.main_dim]*2)
+#       scale_init = np.eye(oshape[:-1] + [self.main_dim]*2)
+#       scale_init = np.eye(self.main_dim)
+      scale= tf.eye(self.main_dim)
+      scale_init = tf.linalg.LinearOperatorFullMatrix(scale)
     else:
       dummy = tf.placeholder(tf.float32, [None, self.main_dim], 'd')
       mean_init = tf.zeros_like(dummy)
@@ -295,7 +299,7 @@ class NormalInputNode(InputNode):
     """
     mean = self.directives['mean_init']
     scale = self.directives['scale_init']
-    print("shapes:", tf.shape(mean), '\n', tf.shape(scale.to_dense()))
+#     print("shapes:", tf.shape(mean), '\n', tf.shape(scale.to_dense()))
     self.dist = dist = dist_dict['MultivariateNormalLinearOperator'](loc=mean,
                                                                      scale=scale)
     

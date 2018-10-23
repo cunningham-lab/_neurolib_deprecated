@@ -176,5 +176,3 @@ class ANode(abc.ABC):
     """
     """
     raise NotImplementedError("Please implement me.")
-  
-  
