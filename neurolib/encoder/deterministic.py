@@ -37,8 +37,6 @@ class DeterministicNNNode(InnerNode):
   def __init__(self, label,
                num_features,
                num_islots=1,
-#                batch_size=1,
-#                max_steps=None,
                is_sequence=False,
                name=None,
                builder=None,

@@ -47,8 +47,8 @@ class CustomEncoderBuilderBasicTest(tf.test.TestCase):
 
     builder.addInput(10)
     cust = builder.createCustomNode(1, 1, name="Custom")
-    cust_in1 = cust.addInner(1, 3)
-    cust_in2 = cust.addInner(1, 4)
+    cust_in1 = cust.addInner(3)
+    cust_in2 = cust.addInner(4)
     cust.addDirectedLink(cust_in1, cust_in2)
     cust.commit()
     builder.addOutput()
@@ -62,8 +62,8 @@ class CustomEncoderBuilderBasicTest(tf.test.TestCase):
     builder = StaticBuilder("MyModel")
 
     cust = builder.createCustomNode(1, 1, name="Custom")
-    cust_in1 = cust.addInner(1, 3)
-    cust_in2 = cust.addInner(1, 4)
+    cust_in1 = cust.addInner(3)
+    cust_in2 = cust.addInner(4)
     cust.addDirectedLink(cust_in1, cust_in2)
     cust.commit()
      
@@ -75,8 +75,5 @@ class CustomEncoderBuilderBasicTest(tf.test.TestCase):
     builder.build()
     
     
-    
-    
-
 if __name__ == "__main__":
-  tf.test.main()
+  unittest.main(failfast=True)
