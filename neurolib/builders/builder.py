@@ -57,7 +57,9 @@ class Builder(abc.ABC):
     self.model_graph = pydot.Dot(graph_type='digraph')
 
   @check_name
-  def addInner(self, num_features, num_islots=1,
+  def addInner(self,
+               num_features,
+               num_islots=1,
                node_class=DeterministicNNNode,
                name=None,
                **dirs):
