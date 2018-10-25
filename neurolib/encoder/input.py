@@ -99,23 +99,23 @@ class InputNode(ANode):
     # Add visualization
     self.vis = pydot.Node(self.name)
   
-  @ANode.num_declared_inputs.setter
-  def num_declared_inputs(self):
-    """
-    Setter for num_declared_inputs
-    """
-    raise AttributeError("Assignment to attribute num_inputs of InputNode is "
-                         " disallowed. num_inputs is fixed to 0 for an InputNode")
-
-  @ANode.num_declared_outputs.setter
-  def num_declared_outputs(self, value):
-    """
-    Setter for num_declared_outputs
-    """
-    if value > self.num_expected_outputs:
-      raise AttributeError("Attribute num_outputs of InputNodes must be either 0 "
-                           "or 1")
-    self._num_declared_outputs = value
+#   @ANode.num_declared_inputs.setter
+#   def num_declared_inputs(self):
+#     """
+#     Setter for num_declared_inputs
+#     """
+#     raise AttributeError("Assignment to attribute num_inputs of InputNode is "
+#                          " disallowed. num_inputs is fixed to 0 for an InputNode")
+# 
+#   @ANode.num_declared_outputs.setter
+#   def num_declared_outputs(self, value):
+#     """
+#     Setter for num_declared_outputs
+#     """
+#     if value > self.num_expected_outputs:
+#       raise AttributeError("Attribute num_outputs of InputNodes must be either 0 "
+#                            "or 1")
+#     self._num_declared_outputs = value
   
   @abstractmethod
   def _build(self):

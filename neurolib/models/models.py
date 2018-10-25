@@ -66,28 +66,24 @@ class Model(abc.ABC):
   @property
   def main_scope(self):
     """
-    TODO: Enforce somehow the setting of this property in custom classes
     """
     return self._main_scope
       
   @abstractmethod
   def build(self):
     """
-    TODO: Fill the exception
     """
     raise NotImplementedError("")
         
   @abstractmethod
   def update(self, dataset):
     """
-    TODO: Fill the exception
     """
     raise NotImplementedError("")
 
   @abstractmethod
   def train(self, dataset, **kwargs):
     """
-    TODO: Fill the exception
     """
     raise NotImplementedError("")
   

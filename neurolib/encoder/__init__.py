@@ -13,7 +13,8 @@
 # limitations under the License.
 #
 # ==============================================================================
-# from tensorflow.contrib import distributions as _distributions
+# pylint: disable=bad-indentation, no-member, no-name-in-module
+
 import tensorflow as tf
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
@@ -36,13 +37,12 @@ for dist_name in sorted(dir(_distributions)):
 
     del _candidate
 
-__all__ = ["MultivariateNormalTriL"]
+__all__ = ["MultivariateNormalTriL"]  #pylint: disable=undefined-all-variable
 
 act_fn_dict = {'relu' : tf.nn.relu,
                'leaky_relu' : tf.nn.leaky_relu}
 
 layers_dict = {'full' : fully_connected}
 
-
-# print(sorted(globals().keys()))
-# print(type(globals()['Beta']))
+cell_dict = {'basic' : tf.nn.rnn_cell.BasicRNNCell,
+             'lstm' : tf.nn.rnn_cell.BasicLSTMCell}

@@ -41,10 +41,11 @@ class Regression(Model):
   encoder routes (rhombic) is also a Regression model:
   
   I1[ -> d_0] => E1[d_0 -> d_1], E2[d_0 -> d_2]
+  
   E1[d_0 -> d_1], E2[d_0 -> d_2] => O1[d_1 + d_2 -> ]
   
   Any user defined Regression must respect the names of the mandatory Input and
-  Output nodes, which are fixed to "features" and"response" respectively. 
+  Output nodes, which are fixed to "features" and "response" respectively. 
   
   
   The default Regression instance builds a Model graph with just one inner
@@ -163,7 +164,7 @@ class Regression(Model):
     self._model_graph = builder.model_graph
     
 #     self.cost = self._define_cost()
-    self.cost = dirs['loss_func'](self._nodes)
+    self.cost = dirs['loss_func'](self._nodes)  #pylint: disable=not-callable
     self.bender = GDTrainer(self.cost, **dirs)
       
     self._is_built = True
