@@ -277,8 +277,8 @@ class StaticBuilder(Builder):
     label = self.num_nodes
     self.num_nodes += 1
     
-    # Must define here to avoid circular dependencies
-    custom_builder = StaticBuilder(name)
+    # Define here to avoid circular dependencies
+    custom_builder = StaticBuilder(scope=name, batch_size=self.batch_size)
     cust = CustomNode(label,
                       num_inputs,
                       num_outputs,

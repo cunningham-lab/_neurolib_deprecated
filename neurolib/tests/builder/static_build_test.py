@@ -59,13 +59,13 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     try:
       builder = StaticBuilder()
       builder.addInput(10, name="In")
-      enc_name = builder.addInner(1, [3], name="In")
+      enc_name = builder.addInner(3, name="In")
     except AttributeError:
       print("\nCAUGHT! Trying to assign the same name to two nodes! "
             "AttributeError exception\n")
       builder = StaticBuilder()
       builder.addInput(10, name="In")
-      enc_name = builder.addInner(1, [3], name="Det")
+      enc_name = builder.addInner(3, name="Det")
 
     enc1 = builder.nodes[enc_name]
     print('\nNode keys in builder:', list(builder.nodes.keys()))
@@ -86,7 +86,7 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     print("\nTest 2: Adding OutputNode")
     builder = StaticBuilder()
     builder.addInput(10, name="In")
-    builder.addInner(1, [3], name="Det")
+    builder.addInner(3, name="Det")
     o_name = builder.addOutput(name="Out")
     
     o1 = builder.nodes[o_name]
@@ -108,7 +108,7 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     print("\nTest 3: Adding DirectedLinks")
     builder = StaticBuilder()
     in1 = builder.addInput(10, name="In")
-    enc1 = builder.addInner(1, [3], name="Det")
+    enc1 = builder.addInner(3, name="Det")
     out1 = builder.addOutput(name="Out")
     
     builder.addDirectedLink(in1, enc1)
@@ -135,7 +135,7 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     print("\nTest 4: Building a Basic Model")
     builder = StaticBuilder(scope="Basic")
     in_name = builder.addInput(10)
-    enc_name = builder.addInner(1, [3])
+    enc_name = builder.addInner(3)
     out_name = builder.addOutput()
     builder.addDirectedLink(in_name, enc_name)
     builder.addDirectedLink(enc_name, out_name)
@@ -161,7 +161,7 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     print("\nTest 5: Building a Model with cloning")
     builder = StaticBuilder("Clone")
     in1 = builder.addInput(10)
-    enc1 = builder.addInner(1, [3])
+    enc1 = builder.addInner(3)
     out1 = builder.addOutput(name="Out1")
     out2 = builder.addOutput(name="Out2")
     
@@ -180,7 +180,7 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     builder = StaticBuilder("Concat")
     in1 = builder.addInput(10)
     in2 = builder.addInput(20)
-    enc1 = builder.addInner(2, [3])
+    enc1 = builder.addInner(3, num_islots=2)
     out1 = builder.addOutput()
 
     builder.addDirectedLink(in1, enc1, islot=0)
@@ -192,14 +192,14 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
   @unittest.skipIf(False, "Skipping")
   def test_BuildModel3(self):
     """
-    Try to break it, the algorithm... !!! Guess not mdrfkr.
+    Try to break it, the algorithm... !! Guess not mdrfkr.
     """
     print("\nTest 7: Building a more complicated Model")
     builder = StaticBuilder("BreakIt")
     in1 = builder.addInput(10)
     in2 = builder.addInput(20)
-    enc1 = builder.addInner(1, [3])
-    enc2 = builder.addInner(2, [5])
+    enc1 = builder.addInner(3)
+    enc2 = builder.addInner(5, num_islots=2)
     out1 = builder.addOutput()
     out2 = builder.addOutput()
     
@@ -213,4 +213,4 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
 
     
 if __name__ == "__main__":
-  tf.test.main()
+  unittest.main(failfast=True)

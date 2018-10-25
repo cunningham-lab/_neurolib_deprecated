@@ -57,7 +57,7 @@ class Builder(abc.ABC):
     self.model_graph = pydot.Dot(graph_type='digraph')
 
   @check_name
-  def addInner(self, *main_params,
+  def addInner(self, num_features, num_islots=1,
                node_class=DeterministicNNNode,
                name=None,
                **dirs):
@@ -66,26 +66,27 @@ class Builder(abc.ABC):
     
     Args:
       *main_params (list): List of mandatory params for the InnerNode
-      
       node_class (InnerNode): class of the node
-      
       name (str): A unique string identifier for the node being added to the MG
-      
       dirs (dict): A dictionary of directives for the node
     """
     label = self.num_nodes
     self.num_nodes += 1
     
-    if node_class._requires_builder:
-      enc_node = node_class(label, *main_params, name=name,
-                            builder=self, 
-                            batch_size=self.batch_size,
-                            **dirs)
+    if hasattr(self, 'max_steps'):
+      max_steps = self.max_steps
+      is_sequence = True
     else:
-      enc_node = node_class(label, *main_params,
-                            name=name,
-                            batch_size=self.batch_size,
-                            **dirs)
+      max_steps = None
+      is_sequence=False
+    enc_node = node_class(label, num_features,
+                          num_islots=num_islots,
+                          name=name,
+                          builder=self, 
+                          batch_size=self.batch_size,
+                          max_steps=max_steps,
+                          is_sequence=is_sequence,
+                          **dirs)
       
     self.nodes[enc_node.name] = self._label_to_node[label] = enc_node
   

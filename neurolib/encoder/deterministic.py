@@ -23,9 +23,9 @@ from neurolib.encoder import act_fn_dict, layers_dict
 class DeterministicNNNode(InnerNode):
   """
   A DeterministicNNNode (Neural Net) is a deterministic mapping with a single
-  input a single output. It is the simplest node that embodies a transformation
-  to the way information is represented.
-  
+  output. It is the simplest node that embodies a transformation to the way
+  information is represented. DeterministicNNNodes can have many inputs, in
+  which case they are concatenated when the node is built.
   
   Class attributes:
     num_expected_inputs = 1
@@ -35,51 +35,44 @@ class DeterministicNNNode(InnerNode):
   num_expected_outputs = 1
   
   def __init__(self, label,
-               num_expected_inputs,
-               output_shape,
-               batch_size=None,
+               num_features,
+               num_islots=1,
+#                batch_size=1,
+#                max_steps=None,
+               is_sequence=False,
                name=None,
+               builder=None,
                **dirs):
     """
     Initialize a DeterministicNNNode.
     
     Args:
       label (int): A unique integer identifier for the node
-      
-      output_shape (int or list of ints): The shape of the output encoding.
+      num_features (int or list of ints): The shape of the output encoding.
           This excludes the 0th dimension - batch size - and the 1st dimension
           when the data is a sequence - number of steps
-          
       name (str): A unique string identifier for this node
-    
       batch_size (int): The output batch size. Set to None by default
           (unspecified batch_size)
-          
       builder (Builder): An instance of Builder necessary to declare the
           secondary output nodes
-          
       dirs (dict): A set of user specified directives for constructing this
           node
     """
     self.name = "Det_" + str(label) if name is None else name
     super(DeterministicNNNode, self).__init__(label)
     
-    self.num_expected_inputs = num_expected_inputs
+    self.num_features = num_features
+    self.num_expected_inputs = num_islots
     self._is_numsteps_static = True
-    self._is_sequence = False
-    if isinstance(output_shape, int):
-      main_oshape = [batch_size] + [output_shape]
-    elif isinstance(output_shape, list):
-      if len(output_shape) == 2:
-        self._is_sequence = True
-        if output_shape[0] is None:
-          self._is_numsteps_static = False
-      elif len(output_shape) > 2:
-        raise NotImplementedError("Output shape > 2 not implemented")
-      main_oshape = [batch_size] + output_shape
+    batch_size = builder.batch_size
+    self.is_sequence = is_sequence
+    if is_sequence:
+      self.max_steps = max_steps = builder.max_steps
+      main_oshape = [batch_size, max_steps, num_features]
     else:
-      raise ValueError("The output_shape of a DeterministicNNNode must be an int or "
-                       "a list of ints")
+      main_oshape = [batch_size, num_features]
+
     self.main_oshape = self._oslot_to_shape[0] = main_oshape
     
     self._update_directives(**dirs)
@@ -147,15 +140,3 @@ class DeterministicNNNode(InnerNode):
     self._is_built = True
     
     return output
-
-
-class DeterministicCustomNode(InnerNode):
-  """
-  """
-  pass
-
-
-class Deterministic2DNNNode(InnerNode):
-  """
-  """
-  pass
