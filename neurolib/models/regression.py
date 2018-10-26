@@ -27,10 +27,10 @@ from neurolib.utils.graphs import get_session
 
 class Regression(Model):
   """
-  The Regression Model is the simplest possible model in the Encoder paradigm.
-  It consists of a single submodel, with a single input and a single output. In
-  between there may lie any directed, acyclic graph formed of deterministic
-  encoders nodes.
+  The Regression Model implements regression with arbitrary features. It is
+  specified by defining a single Model Graph (MG), with a single InputNode and a
+  single OutputNode. The MG itself is an acyclic directed graph formed of any
+  combination of deterministic encoders nodes.
   
   Ex: A chain of encoders with a single input and output is a Regression model:
   
@@ -47,20 +47,20 @@ class Regression(Model):
   Any user defined Regression must respect the names of the mandatory Input and
   Output nodes, which are fixed to "features" and "response" respectively. 
   
-  
   The default Regression instance builds a Model graph with just one inner
   Encoder
   
   I1[ -> d_0] => E1[d_0 -> d_1] => O1[d_{1} -> ]
   
   The inner encoder node is parameterized by a neural network which can be
-  controlled through the directives. For example, linear regression is achieved
+  controlled through the directives. Specifically, linear regression is achieved
   by initializing Regression with num_layers=1 and activation=None
   """
   def __init__(self,
                input_dim=None,
                output_dim=1,
                builder=None,
+               batch_size=1,
                **dirs):
     """
     Initialize the Regression Model
@@ -73,29 +73,29 @@ class Regression(Model):
     """
     self.input_dim = input_dim
     self.output_dim = output_dim
+    self.batch_size = batch_size
     
     self._main_scope = 'Regression'
 
     super(Regression, self).__init__()
+
     self.builder = builder
-    self._update_default_directives(**dirs)
-    if builder is not None:
-      self._help_build()
-    else:
+    if self.builder is None:
       if input_dim is None:
         raise ValueError("Argument input_dim is required to build the default "
                          "Regression")
       elif output_dim > 1:
         raise NotImplementedError("Multivariate regression is not implemented")
       
+    self._update_default_directives(**dirs)
+
     # Defined on build
     self._adj_list = None
-    self._nodes = None
+    self.nodes = None
     self._model_graph = None
     
     self.cost = None
-    self.bender = None
-
+    self.trainer = None
 
   def _update_default_directives(self, **directives):
     """
@@ -103,34 +103,17 @@ class Regression(Model):
     """
     self.directives = {'trainer' : 'gd',
                        'loss_func' : 'mse',
-                       'gd_optimizer' : 'adam'}
+                       'gd_optimizer' : 'adam',
+                       }
     if self.builder is None:
       self.directives.update({'num_layers' : 2,
                               'num_nodes' : 128,
                               'activation' : 'leaky_relu',
                               'net_grow_rate' : 1.0,
                               'share_params' : False})
-    self.directives['loss_func'] = cost_dict[self.directives['loss_func']]  # @UndefinedVariable
     
     self.directives.update(directives)
-                          
-  def _help_build(self):
-    """
-    Check that the client-provided builder corresponds indeed to a
-    Regression. 
-    
-    !! Not clear whether this is actually needed, keep for now.
-    """
-    dirs = self.directives
-    trainer = dirs['trainer']
-    print("Hi! I see you are attempting to build a Regressor by yourself."
-          "In order for your model to be consistent with the ", trainer,
-          " Trainer, you must implement the following Output Nodes:")
-    if trainer == 'gd-mse':
-      print("OutputNode(input_dim={}, name='regressors')".format(self.output_dim))
-      print("OutputNode(input_dim={}, name='response')".format(self.output_dim))
-      print("\nThis is an absolute minimum requirement and NOT a guarantee that a custom "
-            "model will be successfully trained (read the docs for more).")
+    self.directives['loss_func'] = cost_dict[self.directives['loss_func']]  # @UndefinedVariable
 
   def build(self):
     """
@@ -141,7 +124,8 @@ class Regression(Model):
     builder = self.builder
     dirs = self.directives
     if builder is None:
-      self.builder = builder = StaticBuilder(scope=self.main_scope)
+      self.builder = builder = StaticBuilder(scope=self.main_scope,
+                                             batch_size=self.batch_size)
       
       in0 = builder.addInput(self.input_dim, name="features", **dirs)
       enc1 = builder.addInner(1, self.output_dim, **dirs)
@@ -154,18 +138,17 @@ class Regression(Model):
     else:
       self._check_user_build()
       builder.scope = self.main_scope
-    in1 = builder.addInput(self.output_dim, name="input_response")
+    in1 = builder.addInput(self.output_dim, name="i_response")
     out1 = builder.addOutput(name="response")
     builder.addDirectedLink(in1, out1)
 
     # Build the tensorflow graph
     builder.build()
-    self._nodes = self.builder.nodes
+    self.nodes = self.builder.nodes
     self._model_graph = builder.model_graph
     
-#     self.cost = self._define_cost()
-    self.cost = dirs['loss_func'](self._nodes)  #pylint: disable=not-callable
-    self.bender = GDTrainer(self.cost, **dirs)
+    self.cost = dirs['loss_func'](self.nodes)  #pylint: disable=not-callable
+    self.trainer = GDTrainer(self.cost, **dirs)
       
     self._is_built = True
     
@@ -175,18 +158,12 @@ class Regression(Model):
     """
     pass
     
-  def update(self, dataset):
-    """
-    Carry a single update on the model  
-    """
-    self.bender.update(dataset)
-  
   def _check_dataset_correctness(self, dataset):
     """
     """
     pass
   
-  def train(self, dataset, num_epochs=100, batch_size=1):
+  def train(self, dataset, num_epochs=100):
     """
     Train the Regression model. 
     
@@ -198,24 +175,26 @@ class Regression(Model):
     """
     self._check_dataset_correctness(dataset)
     train_dataset, _, _ = self.make_datasets(dataset)
+    batch_size = self.batch_size
 
+    print('train_dataset.keys():', train_dataset.keys())
     sess = get_session()
     sess.run(tf.global_variables_initializer())
     for _ in range(num_epochs):
-      self.bender.update(sess,
-                         tuple(zip(*train_dataset.items())),
-                         batch_size=batch_size)
-      cost = np.mean(sess.run([self.cost], feed_dict=train_dataset))
+      self.trainer.update(sess,
+                          tuple(zip(*train_dataset.items())),
+                          batch_size=batch_size)
+      cost = self.reduce_op_from_batches(sess, [self.cost], train_dataset)
       print(cost)
-    
+        
   def visualize_model_graph(self, filename="_model_graph"):
     """
     Generate a representation of the computational graph
     """
     self._model_graph.write_png(filename)
     
-  def sample(self):
+  def sample(self, input_data, node='prediction', islot=0):
     """
-    Sample from the model graph. For user provided features generates a response.
+    Sample from Regression
     """
-    pass
+    return Model.sample(self, input_data, node, islot=islot)

@@ -16,6 +16,9 @@
 import abc
 from abc import abstractmethod
 
+import numpy as np
+
+from neurolib.utils.graphs import get_session
 # pylint: disable=bad-indentation, no-member, protected-access
 
 class Model(abc.ABC):
@@ -75,27 +78,15 @@ class Model(abc.ABC):
     """
     raise NotImplementedError("")
         
-  @abstractmethod
   def update(self, dataset):
     """
+    Carry a single update on the model  
     """
-    raise NotImplementedError("")
+    self.trainer.update(dataset)
 
   @abstractmethod
   def train(self, dataset, **kwargs):
     """
-    """
-    raise NotImplementedError("")
-  
-  def sample(self):
-    """
-    TODO: Think about what is meant by sample. Only Generative Models should
-    have sampling capabilities so this function probably shouldnt be here since
-    I am defining a `Model` as the most general composition of Encoders. sample
-    in fact seems to be a method of the abstract Encoder class, not of the
-    Model, huh?
-    
-    TODO: Fill the exception
     """
     raise NotImplementedError("")
 
@@ -121,24 +112,57 @@ class Model(abc.ABC):
                        "'valid' and 'test'".format(key))
     
     return train_dataset, valid_dataset, test_dataset
-  
+    
+  def batch_iterator_from_dataset(self, dataset, shuffle=True):
+    """
+    """
+    nsamps = len(list(dataset.values())[0])
+    l_inds = np.arange(nsamps)
+    if shuffle:
+      np.random.shuffle(l_inds)
+    for idx in range(nsamps//self.batch_size):
+      yield {key : value[l_inds[idx:idx+self.batch_size]] for key, value
+             in dataset.items()}
 
-class StaticModel(Model):
-  """
-  TODO: Decide if this split is needed
-  """
-  def __init__(self):
+  def reduce_op_from_batches(self, sess, ops, dataset, reduction='mean',
+                             num_batches=100):
     """
+    Reduce op from batches
     """
-    super(StaticModel, self).__init__()
-
-
-class SequentialModel():
-  """
-  TODO: Decide if this split is needed
-  """
-  def __init__(self):
+    if self.batch_size is None:
+      return sess.run(ops, feed_dict=dataset)
+    else:
+      reduced = 0
+      dataset_iter = self.batch_iterator_from_dataset(dataset)
+      if reduction == 'mean' or reduction == 'sum':
+        for batch_data in dataset_iter:
+          reduced += sess.run(ops, feed_dict=batch_data)[0]
+        if reduction == 'mean': return reduced/(self.batch_size*num_batches)
+        else: return reduced
+          
+  def sample(self, input_data, node, islot=0):
     """
+    Sample from the model graph. For user provided features generates a
+    response.
     """
-    super(SequentialModel, self).__init__()
-  
+    addcolon0 = lambda s : self.main_scope +  '/' + s + ':0'
+    node = self.nodes[node]
+    sess = get_session()
+    input_data = {addcolon0(key) : value for key, value in input_data.items()}
+    if self.batch_size is None:
+      return sess.run(node._islot_to_itensor[islot], feed_dict=input_data)
+    else:
+      num_samples =len(list(input_data.values())[0]) 
+      if num_samples % self.batch_size:
+        raise ValueError("The number of samples ({})is not divisible by "
+                         "self.batch_size({})".format(num_samples,
+                                                      self.batch_size))
+      res = np.zeros([num_samples] + node._islot_to_shape[islot][1:])
+      i = 0
+      for batch_data in self.batch_iterator_from_dataset(input_data,
+                                                         shuffle=False):
+        r = sess.run(node._islot_to_itensor[islot],
+                     feed_dict=batch_data)
+        res[i:i+self.batch_size] = r
+        i += 1
+      return res

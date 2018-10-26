@@ -40,12 +40,17 @@ class RegressionTestTrain(tf.test.TestCase):
     """
     x = 10.0*np.random.randn(100, 2)
     y = x[:,0:1] + 1.5*x[:,1:]# + 3*x[:,1:]**2 + 0.5*np.random.randn(100,1)
-    dataset = {'train_features' : x,
-               'train_input_response' : y}
+    xtrain, xvalid, ytrain, yvalid = x[:80], x[80:], y[:80], y[80:]
+    train_dataset = {'train_features' : xtrain,
+                     'train_response' : ytrain}
     
     dc = Regression(input_dim=2, output_dim=1)
     dc.build()
-    dc.train(dataset, num_epochs=50)
+    dc.train(train_dataset, num_epochs=50)
+    
+    dataset = {'features' : xvalid}    
+    Ypred = dc.sample(dataset, islot=0)
+    print("Ypred", list(zip(Ypred.tolist(), yvalid.tolist())))
     
 if __name__ == '__main__':
   unittest.main(failfast=True)

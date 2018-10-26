@@ -73,22 +73,6 @@ class InputNode(ANode):
       raise ValueError("Missing required `num_features` parameter.")
 
     self.num_features = num_features
-#     if isinstance(num_features, int):
-#       main_oshape = [batch_size] + [num_features]
-#       self._is_sequence = False
-#     elif isinstance(num_features, list):
-#       if len(num_features) == 1:
-#         self._is_sequence = False
-#       elif len(num_features) == 2:
-#         self._is_sequence = True
-#         if num_features[0] is None:
-#           self._is_numsteps_static = False
-#       else:
-#         raise ValueError("`len(num_features) > 2` not implemented")
-#       main_oshape = [batch_size] + num_features
-#     else:
-#       raise TypeError("`num_features` parameter must be of `int` or `list`"
-#                       "type")
     self.main_oshape = self._oslot_to_shape[0] = [batch_size] + [num_features]
     
     self.main_dim = self.main_oshape[-1]
@@ -98,24 +82,6 @@ class InputNode(ANode):
 
     # Add visualization
     self.vis = pydot.Node(self.name)
-  
-#   @ANode.num_declared_inputs.setter
-#   def num_declared_inputs(self):
-#     """
-#     Setter for num_declared_inputs
-#     """
-#     raise AttributeError("Assignment to attribute num_inputs of InputNode is "
-#                          " disallowed. num_inputs is fixed to 0 for an InputNode")
-# 
-#   @ANode.num_declared_outputs.setter
-#   def num_declared_outputs(self, value):
-#     """
-#     Setter for num_declared_outputs
-#     """
-#     if value > self.num_expected_outputs:
-#       raise AttributeError("Attribute num_outputs of InputNodes must be either 0 "
-#                            "or 1")
-#     self._num_declared_outputs = value
   
   @abstractmethod
   def _build(self):
