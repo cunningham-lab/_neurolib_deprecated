@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # ==============================================================================
-import numpy as np
 import tensorflow as tf
 
 from neurolib.models.models import Model
@@ -136,7 +135,7 @@ class Regression(Model):
 
       self._adj_list = builder.adj_list
     else:
-      self._check_user_build()
+      self._check_custom_build()
       builder.scope = self.main_scope
     in1 = builder.addInput(self.output_dim, name="i_response")
     out1 = builder.addOutput(name="response")
@@ -152,7 +151,7 @@ class Regression(Model):
       
     self._is_built = True
     
-  def _check_user_build(self):
+  def _check_custom_build(self):
     """
     Check that the user-declared build is consistent with the Regression class
     """

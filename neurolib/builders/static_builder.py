@@ -365,8 +365,6 @@ class StaticBuilder(Builder):
             islot = child_node._parent_label_to_islot[cur_node_label]
             
             # Fill the inputs of the child node
-#             print('cur_node', cur_node_label, cur_node.name)
-#             print('cur_node.get_outputs()', cur_node.get_outputs() )
             child_node._islot_to_itensor[islot] = cur_node.get_outputs()[oslot]
             if isinstance(child_node, CustomNode):
               enc, enc_islot = child_node._islot_to_inner_node_islot[islot]

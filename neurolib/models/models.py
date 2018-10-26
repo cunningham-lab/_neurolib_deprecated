@@ -85,7 +85,7 @@ class Model(abc.ABC):
     self.trainer.update(dataset)
 
   @abstractmethod
-  def train(self, dataset, **kwargs):
+  def train(self, dataset, num_epochs, **kwargs):
     """
     """
     raise NotImplementedError("")

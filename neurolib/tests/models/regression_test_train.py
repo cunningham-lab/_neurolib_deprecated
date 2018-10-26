@@ -48,7 +48,7 @@ class RegressionTestTrain(tf.test.TestCase):
     dc.build()
     dc.train(train_dataset, num_epochs=50)
     
-    dataset = {'features' : xvalid}    
+    dataset = {'features' : xvalid}
     Ypred = dc.sample(dataset, islot=0)
     print("Ypred", list(zip(Ypred.tolist(), yvalid.tolist())))
     

@@ -25,6 +25,8 @@ from neurolib.utils.graphs import get_session
 def make_data_iterator(data, batch_size=1, shuffle=True):
     """
     """
+    if batch_size is None:
+      batch_size = 1
     nsamps = len(data[0])
     l_inds = np.arange(nsamps)
     if shuffle: 
@@ -110,7 +112,6 @@ class GDTrainer(ModelBender):
     data_iterator = make_data_iterator(data, batch_size=batch_size)
     for batch in data_iterator:
       feed_dict = dict(zip(keys, batch))
-#       _, cost = sess.run([self.train_op, self.cost], feed_dict=feed_dict)
       sess.run([self.train_op], feed_dict=feed_dict)
   
 #   def train(self, train_dataset, valid_dataset={}, num_epochs=100):
