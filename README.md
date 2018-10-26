@@ -14,4 +14,8 @@ In addition, up-to-date versions of numpy, scipy and matplotlib are expected.
 
 ## Usage
 
-This library is at the moment in an alpha stage. Any use ot this code should start from the tests folder. Report any bug to the developer
+This library is at the moment in an alpha stage. It is recommended to use this code starting from the tests folder. As usual, to run any specific test, first add the root directory of neurolib to your PYTHONPATH as usual:
+
+$ export PYTHONPATH=path_to_neurolib:PYTHONPATH
+
+Please report bugs.

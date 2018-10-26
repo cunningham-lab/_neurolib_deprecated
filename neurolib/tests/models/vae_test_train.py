@@ -60,7 +60,7 @@ class VAETestTrain(tf.test.TestCase):
         
     vae = VariationalAutoEncoder(latent_dim=3, output_dim=10)
     vae.build()
-    vae.train(dataset, num_epochs=500)
+    vae.train(dataset, num_epochs=200)
     
 if __name__ == '__main__':
   unittest.main(failfast=True)
