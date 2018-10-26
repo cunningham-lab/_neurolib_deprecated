@@ -15,20 +15,19 @@
 # ==============================================================================
 import os
 os.environ['PATH'] += ':/usr/local/bin'
-
 import unittest
 
-import numpy as np
 import tensorflow as tf
 
-from neurolib.models.regression import Regression
+from neurolib.models.rnn_sequence_predictor import RNNClassifier
 
 # pylint: disable=bad-indentation, no-member, protected-access
 
-NUM_TESTS = 1
-run_test = 1
+NUM_TESTS = 2
+run_up_to_test = 2
+tests_to_run = list(range(run_up_to_test))
 
-class RegressionTestTrain(tf.test.TestCase):
+class RNNClassifierBuildTest(tf.test.TestCase):
   """
   TODO: Write these in terms of self.Assert...
   """  
@@ -36,28 +35,24 @@ class RegressionTestTrain(tf.test.TestCase):
     """
     """
     tf.reset_default_graph()
-  
-  @unittest.skipIf(run_test != 1, "Skipping")
-  def test_train(self):
+
+  @unittest.skipIf(0 not in tests_to_run, "Skipping")
+  def test_init(self):
     """
-    Test train
+    Test initialization
     """
-    print("\nTest 0: Regression train")
+    print("\nTest 0: RNNClassifier Initialization")
+    RNNClassifier(2, input_dim=1, latent_dim=3)
+
+  @unittest.skipIf(1 not in tests_to_run, "Skipping")    
+  def test_build(self):
+    """
+    Test build
+    """
+    print("\nTest 1: RNNClassifier build")
+    model = RNNClassifier(2, input_dim=2, latent_dim=3)
+    model.build()
     
-    x = 10.0*np.random.randn(100, 2)
-    y = x[:,0:1] + 1.5*x[:,1:]# + 3*x[:,1:]**2 + 0.5*np.random.randn(100,1)
-    xtrain, xvalid, ytrain, yvalid = x[:80], x[80:], y[:80], y[80:]
-    train_dataset = {'train_features' : xtrain,
-                     'train_response' : ytrain}
-    
-    # Define a regression model
-    dc = Regression(input_dim=2, output_dim=1)
-    dc.build()
-    dc.train(train_dataset, num_epochs=50) # train
-    
-    dataset = {'features' : xvalid}
-    Ypred = dc.sample(dataset, islot=0)
-    print("Ypred", list(zip(Ypred.tolist(), yvalid.tolist())))
-    
+
 if __name__ == '__main__':
-  unittest.main(failfast=True)
+  unittest.main(failfast=True) 

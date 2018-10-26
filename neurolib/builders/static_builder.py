@@ -23,6 +23,7 @@ from neurolib.encoder.custom import CustomNode
 from neurolib.encoder.input import PlaceholderInputNode  # @UnusedImport
 from neurolib.encoder.output import OutputNode
 from neurolib.utils.utils import check_name
+from neurolib.encoder.basic import CopyNode
 
 # pylint: disable=bad-indentation, no-member, protected-access
 
@@ -67,7 +68,9 @@ class StaticBuilder(Builder):
     The 2 input nodes define placeholders for the features and response data
   
   """
-  def __init__(self, scope=None, batch_size=None):
+  def __init__(self,
+               scope,
+               batch_size=None):
     """
     Initialize the StaticBuilder
     
@@ -75,20 +78,19 @@ class StaticBuilder(Builder):
       scope (str): The tensorflow scope of the Model to be built
       batch_size (int): The batch size. Defaults to None (unspecified)
     """
-    super(StaticBuilder, self).__init__(scope, batch_size=batch_size)
-    
     self.custom_encoders = {}
-    
     self.adj_matrix = None
     self.adj_list = None
+
+    super(StaticBuilder, self).__init__(scope,
+                                        batch_size=batch_size)
               
   @check_name
   def addInput(self,
-               num_features,
-               name=None,
+               state_size,
                iclass=PlaceholderInputNode,
-               max_steps=None,
                is_sequence=False,
+               name=None,
                **dirs):
     """
     Add an InputNode to the Encoder Graph
@@ -101,26 +103,15 @@ class StaticBuilder(Builder):
       
     TODO: Do not call class names directly
     """
-    label = self.num_nodes
-    self.num_nodes += 1
-
-    in_node = iclass(label, 
-                     num_features,
-                     batch_size=self.batch_size,
-                     max_steps=max_steps,
+    in_node = iclass(self,
+                     state_size,
                      is_sequence=is_sequence,
                      name=name,
-                     builder=self,
                      **dirs)
-
     name = in_node.name
-    print("max_steps:", name, max_steps)
     self.input_nodes[name] = self.nodes[name] = in_node 
-    self._label_to_node[label] = in_node
+    self._label_to_node[in_node.label] = in_node
     
-    # Add properties for visualization
-    self.model_graph.add_node(in_node.vis)
-
     return name
     
   @check_name
@@ -131,16 +122,25 @@ class StaticBuilder(Builder):
     Args:
       name (str): Unique identifier for the Output Node
     """
-    label = self.num_nodes
-    self.num_nodes += 1
-    out_node = OutputNode(label, name=name)
+    out_node = OutputNode(self,
+                          name=name)
     name = out_node.name
     self.output_nodes[name] = self.nodes[name] = out_node 
-    self._label_to_node[label] = out_node
+    self._label_to_node[out_node.label] = out_node
     
-    # Add properties for visualization
-    self.model_graph.add_node(out_node.vis)
-
+    return name
+  
+  @check_name
+  def addCopyNode(self, name=None):
+    """
+    Add a Copy Node
+    """
+    c_node = CopyNode(self,
+                      name=name)
+    name = c_node.name
+    self.nodes[name] = c_node
+    self._label_to_node[c_node.label] = c_node
+    
     return name
     
   def addDirectedLink(self, node1, node2, oslot=0, islot=0):
@@ -208,7 +208,7 @@ class StaticBuilder(Builder):
                            "a different islot")
 
     # C
-    print('Adding dlink', node1.label, ' -> ', node2.label)
+    print('Adding dlink:', node1.name, ' -> ', node2.name)
     if self.adj_matrix is None:
       self.adj_matrix = [[0]*nnodes for _ in range(nnodes)]
       self.adj_list = [[] for _ in range(nnodes)]
@@ -224,8 +224,6 @@ class StaticBuilder(Builder):
     # D
     self.adj_matrix[node1.label][node2.label] = 1
     self.adj_list[node1.label].append(node2.label)
-#     print('After:', self.adj_list)
-    self.model_graph.add_edge(pydot.Edge(node1.vis, node2.vis))
       
     # E
     if node1.num_expected_outputs > 1:
@@ -246,17 +244,15 @@ class StaticBuilder(Builder):
       node1.free_oslots.remove(oslot)
     
     node2._islot_to_shape[islot] = exchanged_shape
-    node2._parent_label_to_islot[node1.label] = islot    
+    node2._parent_label_to_islot[node1.label] = islot
     node2.num_declared_inputs += 1
+
+    # Initialize _built_parents for the child node.
+    node2._built_parents[node1.label] = False
     
     # F
-    update = getattr(node2, '_update_when_linked_as_node2', None)
-    if callable(update):
-      node2._update_when_linked_as_node2()
-
-    # Initialize _built_parents for the child node. This is used in the build
-    # algorithm below.
-    node2._built_parents[node1.label] = False
+    node1.update_when_linked_as_node1()
+    node2.update_when_linked_as_node2()
       
   def check_graph_correctness(self):
     """
@@ -269,24 +265,23 @@ class StaticBuilder(Builder):
   def createCustomNode(self,
                        num_inputs,
                        num_outputs,
+                       is_sequence=False,
                        name=None):
     """
-    Create a custom node
-    
-    TODO:
+    Create a CustomNode
     """
-    label = self.num_nodes
-    self.num_nodes += 1
-    
     # Define here to avoid circular dependencies
-    custom_builder = StaticBuilder(scope=name, batch_size=self.batch_size)
-    cust = CustomNode(label,
+    custom_builder = StaticBuilder(scope=name,
+                                   batch_size=self.batch_size)
+    cust = CustomNode(self,
+                      custom_builder,
                       num_inputs,
                       num_outputs,
-                      builder=custom_builder,
+                      is_sequence=is_sequence,
                       name=name)
-    self.custom_encoders[name] = self.nodes[label] = cust
-    self._label_to_node[label] = cust
+    self.custom_encoders[name] = self.nodes[cust.label] = cust
+    self._label_to_node[cust.label] = cust
+    
     return cust
   
   def get_custom_encoder(self, name):
@@ -338,7 +333,7 @@ class StaticBuilder(Builder):
     """       
     self.check_graph_correctness()
     
-    print('\nBEGIN MAIN BUILD')
+    print('\nBEGIN BUILD')
     with tf.variable_scope(self.scope, reuse=tf.AUTO_REUSE): 
       visited = [False for _ in range(self.num_nodes)]
       queue = []
@@ -368,7 +363,8 @@ class StaticBuilder(Builder):
             # Fill the inputs of the child node
             child_node._islot_to_itensor[islot] = cur_node.get_outputs()[oslot]
             if isinstance(child_node, CustomNode):
-              enc, enc_islot = child_node._islot_to_inner_node_islot[islot]
+              enc_name, enc_islot = child_node._islot_to_inner_node_islot[islot]
+              enc = child_node.in_builder.nodes[enc_name]
               enc._islot_to_itensor[enc_islot] = cur_node.get_outputs()[oslot]
             
             # If the child is an OutputNode, we can append to the queue right away
@@ -383,4 +379,4 @@ class StaticBuilder(Builder):
             if all(child_node._built_parents.items()):
               queue.append(child_node.label)
     
-    print('END MAIN BUILD')  
+    print('END BUILD')  

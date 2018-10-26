@@ -24,6 +24,9 @@ from neurolib.models.vae import VariationalAutoEncoder
 
 # pylint: disable=bad-indentation, no-member, protected-access
 
+NUM_TESTS = 2
+run_up_to_test = 2
+tests_to_run = list(range(run_up_to_test))
 
 class VAETestBuild(tf.test.TestCase):
   """
@@ -37,6 +40,7 @@ class VAETestBuild(tf.test.TestCase):
   def test_init(self):
     """
     """
+    print("\nTest 0: VAE initialization")
     VariationalAutoEncoder(latent_dim=3,
                            output_dim=10,
                            batch_size=1)
@@ -44,6 +48,7 @@ class VAETestBuild(tf.test.TestCase):
   def test_build(self):
     """
     """
+    print("\nTest 1: VAE build")
     dc = VariationalAutoEncoder(latent_dim=3, output_dim=10, batch_size=1)
     dc.build()
 

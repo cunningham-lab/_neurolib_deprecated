@@ -127,7 +127,7 @@ class Regression(Model):
                                              batch_size=self.batch_size)
       
       in0 = builder.addInput(self.input_dim, name="features", **dirs)
-      enc1 = builder.addInner(1, self.output_dim, **dirs)
+      enc1 = builder.addInner(1, num_inputs=self.output_dim, **dirs)
       out0 = builder.addOutput(name="prediction")
 
       builder.addDirectedLink(in0, enc1)
@@ -162,7 +162,7 @@ class Regression(Model):
     """
     pass
   
-  def train(self, dataset, num_epochs=100):
+  def train(self, dataset, num_epochs=100, **dirs):
     """
     Train the Regression model. 
     

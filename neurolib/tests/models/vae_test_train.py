@@ -25,6 +25,8 @@ from neurolib.models.vae import VariationalAutoEncoder
 
 # pylint: disable=bad-indentation, no-member, protected-access
 
+NUM_TESTS = 1
+test_to_run = 1 
 
 def make_data_iterator(data, batch_size=1, shuffle=True):
     """
@@ -46,10 +48,12 @@ class VAETestTrain(tf.test.TestCase):
     """
     """
     tf.reset_default_graph()
-    
+  
+  @unittest.skipIf(test_to_run != 1, "Skipping Test 0")
   def test_train(self):
     """
     """
+    print("\nTest 0: VAE initialization")
     nsamps = 100
     idim = 3
     odim = 10

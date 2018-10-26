@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # ==============================================================================
-import pydot
 import tensorflow as tf
 
 from neurolib.encoder.anode import ANode
@@ -40,7 +39,9 @@ class OutputNode(ANode):
   num_expected_inputs = 1
   num_expected_outputs = 0
   
-  def __init__(self, label, name=None):
+  def __init__(self,
+               builder,
+               name=None):
     """
     Initialize the OutputNode
     
@@ -49,33 +50,12 @@ class OutputNode(ANode):
       
       name (str): A unique name for this node.
     """
-    self.name = "Out_" + str(label) if name is None else name
+    self.builder = builder
+    self.label = builder.num_nodes
+    builder.num_nodes += 1
     
-    super(OutputNode, self).__init__(label)
-    
-    # Add visualization
-    self.vis = pydot.Node(self.name)
-
-  @ANode.num_declared_inputs.setter
-  def num_declared_inputs(self, value):
-    """
-    Setter for num_declared_inputs
-    """
-    if value > self.num_expected_inputs:
-      raise AttributeError("Attribute num_declared_inputs of OutputNodes"
-                           "must be either 0 or 1")
-    self._num_declared_inputs = value
-
-  @ANode.num_declared_outputs.setter
-  def num_declared_outputs(self):
-    """
-    Setter for num_declared_outputs. 
-    
-    Raises an error, num_declared_outputs is fixed to 0.
-    """
-    raise AttributeError("Assignment to attribute num_declared_outputs "
-                         "of OutputNodes is disallowed. num_declared_outputs "
-                         "is fixed to 0 for an OutputNode")
+    super(OutputNode, self).__init__()
+    self.name = "Out_" + str(self.label) if name is None else name
     
   def _build(self):
     """
@@ -88,10 +68,24 @@ class OutputNode(ANode):
     Builder object during processing of this OutputNode's parent by the
     Builder build algorithm
     """
-    print("\nOutput:", self.name,
-          "\nself._islot_to_itensor[0]", type(self._islot_to_itensor[0]) )
     self._islot_to_itensor[0] = tf.identity(self._islot_to_itensor[0],
                                             name=self.name)
     
     self._is_built = True
     
+class OutputSequence(OutputNode):
+  """
+  """  
+  def __init__(self,
+               builder,
+               name=None):
+    """
+    Initialize the OutputSequence. This is the same as an OutputNode but for the name
+    
+    Args:
+      label (int): A unique integer identifier for the node.
+      
+      name (str): A unique name for this node.
+    """
+    super(OutputSequence, self).__init__(builder, name)
+    name = "OutSeq_" + str(self.label) if name is None else name

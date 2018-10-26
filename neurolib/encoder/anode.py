@@ -25,10 +25,10 @@ class ANode(abc.ABC):
   
   An ANode is an abstraction of an operation, much like a tensorflow op, with
   tensors entering and exiting the node. Compared to tensorflow nodes, ANodes
-  are meant to represent higher level abstractions. That is operations that
-  broadly correspond to the encoding of input information into some output info.
-  ANodes represent relevant stops in the flow of information through a
-  statistical model.
+  are meant to represent higher level abstractions. Basically, they are mappings
+  that transform input information into some output encoding. In the flow of
+  information through a graphical statistical mode, ANodes represent relevant
+  stops.
   
   Ex: The Variational Autoencoder Model graph is a sequence of ANodes given by: 
   
@@ -41,20 +41,17 @@ class ANode(abc.ABC):
   ANode that represent respectively the Model's sources and sinks of
   information.
   
-  Most subclasses of ANode are to be accessed (built and linked) through a
-  Builder object. The latter may be in turn a property of a Model. A Model is a
-  directed graph whose nodes are ANodes and whose edges represent conditional
-  dependencies between ANodes (see each Model docs).
+  Most subclasses of ANode are not meant to be accessed (built and linked)
+  directly, but rather through a Builder object. The latter in turn is usually a
+  property of a Model. 
     
   Upon initialization, an ANode holds specifications of its role in the full
-  tensorflow graph of a Model to which the ANode belongs. The tensorflow ops are
-  not built at initialization, but only when the ANode._build() method is called
-  by the Builder object (see Builder docs).
+  tensorflow graph of a Model to which the ANode belongs. The ANode tensorflow
+  ops are not built at initialization, but only when an ANode `_build` method
+  is called by the Builder object (see Builder docs).
   
-  Children of ANode MUST implement the _build() method.
-  
-  The algorithm to build the tensorflow graph of the Model depends on (at least)
-  3 ANode dictionaries that work together:
+  The algorithm to build the tensorflow graph of a Model depends on 3 ANode
+  dictionaries that work together:
     self._built_parents : Keeps track of which among the parents of this node
         have been built. A node can only be built once all of its parents have
         been visited
@@ -64,20 +61,14 @@ class ANode(abc.ABC):
     self._parent_label_to_islot : The keys are the labels of self's parents, the only
         value is an integer, the islot in self that maps to that child. 
   """
-  def __init__(self, label):
+  def __init__(self):
     """
     Initialize an ANode
-    
-    Args:
-      label: A unique integer identifier for this node. Typically provided by a
-          Builder object.
-    
-    TODO: The client should be able to pass a tensorflow op directly. In that
-    case, ANode should act as a simple wrapper that returns the input and the
-    output.
+        
+    TODO: Should the client should be able to pass a tensorflow op directly? In
+    that case, ANode could act as a simple wrapper that returns the input and
+    the output.
     """
-    self.label = label
-  
     self._num_declared_inputs = 0
     self._num_declared_outputs = 0
     
@@ -131,10 +122,27 @@ class ANode(abc.ABC):
     """
     if value > self.num_expected_outputs:
       raise ValueError("Attribute num_outputs of {} must "
-                           "not be greater than {}".format(self.__class__.__name__,
+                       "not be greater than {}".format(self.__class__.__name__,
                                                            self.num_expected_outputs))
     self._num_declared_outputs = value
   
+  def get_main_oshape(self, bsz, mx_stps, ssz):
+    """
+    Get the main output shape for this ANode
+    """
+    main_oshape = [bsz, mx_stps] if self.is_sequence else [bsz]
+    try: # quack!
+      main_oshape.extend(ssz)
+      D = len(ssz)
+    except TypeError:
+      if isinstance(ssz, int):
+        main_oshape += [ssz]
+        D = 1
+    except:
+      print("Failed to define `main_oshape`")
+      raise
+    return main_oshape, D
+    
   def get_islot_shape(self, islot=0):
     """
     Return the incoming shape corresponding to this islot.
@@ -170,9 +178,13 @@ class ANode(abc.ABC):
       raise NotImplementedError("A Node must be built before its inputs and "
                                 "outputs can be accessed")
     return self._oslot_to_otensor
-    
-  @abstractmethod
-  def _build(self):
+  
+  def update_when_linked_as_node1(self):
     """
     """
-    raise NotImplementedError("Please implement me.")
+    pass
+
+  def update_when_linked_as_node2(self):
+    """
+    """
+    pass

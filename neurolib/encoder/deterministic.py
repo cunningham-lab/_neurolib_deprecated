@@ -22,31 +22,33 @@ from neurolib.encoder import act_fn_dict, layers_dict
 
 class DeterministicNNNode(InnerNode):
   """
+  A deterministic mapping in the Model Graph.
+  
   A DeterministicNNNode (Neural Net) is a deterministic mapping with a single
-  output. It is the simplest node that embodies a transformation to the way
-  information is represented. DeterministicNNNodes can have many inputs, in
-  which case they are concatenated when the node is built.
+  output. It is the simplest node that transforms information from one
+  representation to another.
+  
+  DeterministicNNNodes can have many inputs, in which case they are concatenated
+  when the node is built.
   
   Class attributes:
-    num_expected_inputs = 1
     num_expected_outputs = 1    
   """
-  _requires_builder = False
   num_expected_outputs = 1
   
-  def __init__(self, label,
-               num_features,
-               num_islots=1,
+  def __init__(self,
+               builder,
+               state_size,
+               num_inputs=1,
                is_sequence=False,
                name=None,
-               builder=None,
                **dirs):
     """
     Initialize a DeterministicNNNode.
     
     Args:
       label (int): A unique integer identifier for the node
-      num_features (int or list of ints): The shape of the output encoding.
+      state_size (int or list of ints): The shape of the output encoding.
           This excludes the 0th dimension - batch size - and the 1st dimension
           when the data is a sequence - number of steps
       name (str): A unique string identifier for this node
@@ -57,37 +59,34 @@ class DeterministicNNNode(InnerNode):
       dirs (dict): A set of user specified directives for constructing this
           node
     """
-    self.name = "Det_" + str(label) if name is None else name
-    super(DeterministicNNNode, self).__init__(label)
+    super(DeterministicNNNode, self).__init__(builder,
+                                              is_sequence)
+    self.name = "Det_" + str(self.label) if name is None else name
     
-    self.num_features = num_features
-    self.num_expected_inputs = num_islots
-    self._is_numsteps_static = True
-    batch_size = builder.batch_size
-    self.is_sequence = is_sequence
-    if is_sequence:
-      self.max_steps = max_steps = builder.max_steps
-      main_oshape = [batch_size, max_steps, num_features]
-    else:
-      main_oshape = [batch_size, num_features]
-
-    self.main_oshape = self._oslot_to_shape[0] = main_oshape
+    self.state_size = state_size
+    self.num_expected_inputs = num_inputs
+    
+    # Define main shape
+    self.main_oshape, self.D = self.get_main_oshape(self.batch_size,
+                                                    self.max_steps,
+                                                    state_size)
+    print("on init:", self.name, self.main_oshape)
+    self._oslot_to_shape[0] = self.main_oshape
     
     self._update_directives(**dirs)
-    
     self.free_oslots = list(range(self.num_expected_outputs))
     
   def _update_directives(self, **dirs):
     """
     Update the node directives
     """
-    self.directives = {'num_layers' : 2,
+    self.directives = {'num_layers' : 1,
                        'num_nodes' : 128,
                        'activation' : 'relu',
                        'net_grow_rate' : 1.0}
     self.directives.update(dirs)
             
-  def _build(self, islot_to_itensors=None):
+  def _build(self, islot_to_itensor=None):
     """
     Build the node
     """
@@ -115,9 +114,9 @@ class DeterministicNNNode(InnerNode):
       raise err
   
     # Build
-    if islot_to_itensors is None:
-      islot_to_itensors = self._islot_to_itensor
-    itensors = list(zip(*sorted(islot_to_itensors.items())))[1]
+    if islot_to_itensor is None:
+      islot_to_itensor = self._islot_to_itensor
+    itensors = list(zip(*sorted(islot_to_itensor.items())))[1] # make sure the inputs are ordered
     _input = tf.concat(itensors, axis=-1)
     output_dim = self._oslot_to_shape[0][-1]
     if num_layers == 1:

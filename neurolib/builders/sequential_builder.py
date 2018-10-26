@@ -18,22 +18,21 @@ import tensorflow as tf
 
 from neurolib.encoder.anode import ANode
 from neurolib.encoder.sequence import (BasicRNNEvolutionSequence, LSTMEvolutionSequence,
-                                       EvolutionSequence)
+                                       EvolutionSequence, CustomEvolutionSequence)
 from neurolib.encoder.custom import CustomNode
 # from neurolib.encoder.rnn import CustomRNN
 from neurolib.encoder.output import OutputNode
 from neurolib.utils.utils import check_name
 from neurolib.builders.static_builder import StaticBuilder
-from neurolib.encoder.output_seq import OutputSequence
+# from neurolib.encoder.output_seq import OutputSequence
 from neurolib.encoder.deterministic import DeterministicNNNode
 from neurolib.encoder.input import PlaceholderInputNode
 
 # pylint: disable=bad-indentation, no-member, protected-access
 
 sequence_dict = {'basic' : BasicRNNEvolutionSequence,
-                 'lstm' : LSTMEvolutionSequence}
-
-innernode_dict = {'deterministic' : DeterministicNNNode}
+                 'lstm' : LSTMEvolutionSequence,
+                 'custom' : CustomEvolutionSequence}
 
 class SequentialBuilder(StaticBuilder):
   """
@@ -92,7 +91,7 @@ class SequentialBuilder(StaticBuilder):
 
   @check_name
   def addInputSequence(self,
-                       num_features,
+                       state_size,
                        name=None,
                        node_class=PlaceholderInputNode,
                        **dirs):
@@ -100,10 +99,9 @@ class SequentialBuilder(StaticBuilder):
     Add an InputSequence
     """
     node_name = StaticBuilder.addInput(self,
-                                       num_features=num_features,
-                                       name=name,
+                                       state_size=state_size,
                                        iclass=node_class,
-                                       max_steps=self.max_steps,
+                                       name=name,
                                        is_sequence=True,
                                        **dirs)
     self.input_sequences[node_name] = self.input_nodes[node_name]
@@ -113,99 +111,53 @@ class SequentialBuilder(StaticBuilder):
   @check_name
   def addOutputSequence(self, name=None):
     """
+    Add OutputSequence
     """
-    label = self.num_nodes
-    self.num_nodes += 1
-    out_node = OutputSequence(label, name=name)
-    
-    name = out_node.name
-    self.output_nodes[name] = self.nodes[name] = out_node
-    self._label_to_node[label] = out_node
-    
-    # Add properties for visualization
-    self.model_graph.add_node(out_node.vis)
-
-    return name
+    return self.addOutput(name=name)
   
-  def addEvolutionSequence(self,
-                           num_features, 
-                           init_states=None,
-                           num_islots=2,
-                           mode='forward',
-                           name=None,
-                           node_class='basic', 
-                           **dirs):
-    """
-    """
-    label = self.num_nodes
-    self.num_nodes += 1
-    
-    node_class = sequence_dict[node_class]
-    print('init_states', init_states)
-    print('self.nodes', self.nodes)
-    init_states = [self.nodes[node_name] for node_name in init_states]
-    node = node_class(label,
-                      num_features,
-                      init_states,
-                      max_steps=self.max_steps,
-                      batch_size=self.batch_size,
-                      name=name,
-                      num_islots=num_islots,
-                      builder=self,
-                      mode=mode,
-                      **dirs)
-    name = node.name
-    self.nodes[name] = node
-    self._label_to_node[label] = node
-    
-    return name
-  
-  def addInnerSequence(self, num_features, 
-                       num_islots,
-                       mode='forward',
-                       name=None,
+  @check_name
+  def addInnerSequence(self, 
+                       state_size, 
+                       num_inputs=1,
                        node_class='deterministic', 
+                       name=None,
                        **dirs):
     """
     """
-    label = self.num_nodes
-    self.num_nodes += 1
+    return self.addInner(state_size,
+                         num_inputs=num_inputs,
+                         node_class=node_class,
+                         is_sequence=True,
+                         name=name,
+                         **dirs)
+  
+  def addEvolutionSequence(self,
+                           num_features, 
+                           num_inputs,
+#                            init_states=None,
+                           mode='forward',
+                           ev_seq_class='basic',
+                           cell_class='basic', 
+                           name=None,
+                           **dirs):
+    """
+    """
+    if isinstance(ev_seq_class, str):
+      ev_seq_class = sequence_dict[ev_seq_class]
+#     init_states = [self.nodes[node_name] for node_name in init_states]
+    node = ev_seq_class(self,
+                        num_features,
+      #                   init_states=init_states,
+                        num_inputs=num_inputs,
+                        name=name,
+                        mode=mode,
+                        cell_class=cell_class,
+                        **dirs)
+    name = node.name
+    self.nodes[name] = node
+    self._label_to_node[node.label] = node
     
-    node_class = innernode_dict[node_class]
-    node = node_class(label,
-                      num_features,
-                      num_islots=num_islots,
-                      max_steps=self.max_steps,
-                      batch_size=self.batch_size,
-                      is_sequence=True,
-                      name=name,
-                      builder=self,
-                      **dirs)
-    
-    self.nodes[node.name] = self._label_to_node[label] = node
-    
-    return node.name
-#       
-#   def declareRNN(self, num_inputs, num_outputs, name):
-#     """
-#     
-#     TODO: Check name
-#     """
-#     label = self.num_nodes
-#     self.num_nodes += 1
-#     
-#     # Must define here to avoid circular dependencies
-#     custom_builder = SequentialBuilder(self.max_steps,
-#                                        scope=name,
-#                                        batch_size=self.batch_size)
-#     cust = CustomRNN(label,
-#                num_inputs,
-#                num_outputs,
-#                builder=custom_builder,
-#                name=name)
-#     self.custom_encoders[name] = self.nodes[label] = cust
-#     self._label_to_node[label] = cust
-#     return cust
+    return name
 
   def addDirectedLink(self, node1, node2, oslot=0, islot=0):
     """
@@ -265,19 +217,19 @@ class SequentialBuilder(StaticBuilder):
                      "inputs. In that case, all the inputs for this node must "
                      "be declared")
     if islot in node2._islot_to_shape:
-      print("islot, node2._islot_to_shape", islot, node2._islot_to_shape)
+#       print("islot, node2._islot_to_shape", islot, node2._islot_to_shape)
       raise AttributeError("Input slot {} is already occupied. Assign to "
                            "a different islot".format(islot))
 
     # Stage C
-    print('\nAdding dlink', node1.label, ' -> ', node2.label)
+    print('\nAdding dlink', node1.name, ' -> ', node2.name)
 #     if not hasattr(self, "adj_matrix"):
     if self.adj_matrix is None:
       self.adj_matrix = [[0]*nnodes for _ in range(nnodes)]
       self.adj_list = [[] for _ in range(nnodes)]
     else:
 #       print(self.adj_matrix)
-      print('Before:', self.adj_list)
+#       print('Before:', self.adj_list)
       if nnodes > len(self.adj_matrix):
         l = len(self.adj_matrix)
         for row in range(l):
@@ -291,7 +243,7 @@ class SequentialBuilder(StaticBuilder):
       self._check_items_do_exist()
       self.adj_matrix[node1.label][node2.label] = 1
       self.adj_list[node1.label].append(node2.label)
-      print('After:', self.adj_list)
+#       print('After:', self.adj_list)
       
 #       self.model_graph.add_edge(pydot.Edge(node1.vis, node2.vis))
     else:
@@ -312,7 +264,6 @@ class SequentialBuilder(StaticBuilder):
                          "input slot")
     exchanged_shape = node1._oslot_to_shape[oslot]
     node1._child_label_to_oslot[node2.label] = oslot
-#     node1.num_declared_outputs += 1
     if oslot in node1.free_oslots:
       node1.num_declared_outputs += 1
       node1.free_oslots.remove(oslot)
@@ -392,9 +343,9 @@ class SequentialBuilder(StaticBuilder):
     
           print("Building node: ", cur_node.label, cur_node.name)
           # Build the tensorflow graph for this Encoder
-          print("cur_node, _islot_to_itensor", cur_node.label, cur_node._islot_to_itensor)
+#           print("cur_node, _islot_to_itensor", cur_node.label, cur_node._islot_to_itensor)
           cur_node._build()
-          print("cur_node, _oslot_to_otensor", cur_node.label, cur_node._oslot_to_otensor)
+#           print("cur_node, _oslot_to_otensor", cur_node.label, cur_node._oslot_to_otensor)
                       
           # Go over the current node's children
           for child_label in self.adj_list[cur_node_label]:
@@ -406,8 +357,8 @@ class SequentialBuilder(StaticBuilder):
             islot = child_node._parent_label_to_islot[cur_node_label]
             
             # Fill the inputs of the child node
-            print('cur_node', cur_node_label, cur_node.name)
-            print('cur_node.get_outputs()', cur_node.get_outputs() )
+#             print('cur_node', cur_node_label, cur_node.name)
+#             print('cur_node.get_outputs()', cur_node.get_outputs() )
             child_node._islot_to_itensor[islot] = cur_node._oslot_to_otensor[oslot]
             if isinstance(child_node, CustomNode):
               enc, enc_islot = child_node._islot_to_enc_islot[islot]
@@ -422,7 +373,7 @@ class SequentialBuilder(StaticBuilder):
             # A child only gets added to the queue, i.e. ready to be built, once
             # all its parents have been built ( and hence, produced the
             # necessary inputs )
-            print("child_node._built_parents.values()", child_node.label, child_node._built_parents.values())
+#             print("child_node._built_parents.values()", child_node.label, child_node._built_parents.values())
             if all(child_node._built_parents.values()):
               queue.append(child_node.label)
   

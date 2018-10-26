@@ -20,6 +20,10 @@ from neurolib.builders.static_builder import StaticBuilder
 
 # pylint: disable=bad-indentation, no-member, protected-access
 
+NUM_TESTS = 9
+run_up_to_test = 8
+tests_to_run = list(range(run_up_to_test))
+
 class StaticModelBuilderBasicTest(tf.test.TestCase):
   """
   """
@@ -28,14 +32,14 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     """
     tf.reset_default_graph()
     
-  @unittest.skipIf(False, "Skipping")
+  @unittest.skipIf(0 not in tests_to_run, "Skipping")
   def test0_init(self):
     """
     Test adding basic InputNode
     """
     print("\nTest 0: Initialization")
-    builder = StaticBuilder()
-    in1_name = builder.addInput(10)
+    builder = StaticBuilder(scope='Build0')
+    in1_name = builder.addInput(state_size=10)
     in1 = builder.input_nodes[in1_name]
     
     print('Node keys in builder:', list(builder.input_nodes.keys()))
@@ -47,7 +51,7 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     self.assertEqual(in1.num_declared_inputs, 0, "The number of outputs of "
                      "the InputNode has not been assigned correctly")
     
-  @unittest.skipIf(False, "Skipping")
+  @unittest.skipIf(1 not in tests_to_run, "Skipping")
   def test_addInner(self):
     """
     Test adding basic Deterministic InnerNode. 
@@ -57,15 +61,15 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     """
     print("\nTest 1: Adding InnerNode")
     try:
-      builder = StaticBuilder()
-      builder.addInput(10, name="In")
-      enc_name = builder.addInner(3, name="In")
+      builder = StaticBuilder(scope='Build0')
+      builder.addInput(state_size=10, name="In")
+      enc_name = builder.addInner(state_size=3, name="In")
     except AttributeError:
-      print("\nCAUGHT! Trying to assign the same name to two nodes! "
-            "AttributeError exception\n")
-      builder = StaticBuilder()
-      builder.addInput(10, name="In")
-      enc_name = builder.addInner(3, name="Det")
+      print("\nCAUGHT! (AttributeError exception) \n"
+            "Trying to assign the same name to two nodes!")
+      builder = StaticBuilder(scope='Build0')
+      builder.addInput(state_size=10, name="In")
+      enc_name = builder.addInner(state_size=3, name="Det")
 
     enc1 = builder.nodes[enc_name]
     print('\nNode keys in builder:', list(builder.nodes.keys()))
@@ -78,13 +82,13 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     self.assertEqual(enc1.num_declared_inputs, 0, "The number of inputs of the "
                      "DeterministicNode has not been assigned correctly")
 
-  @unittest.skipIf(False, "Skipping")
+  @unittest.skipIf(2 not in tests_to_run, "Skipping")
   def test_addOutput(self):
     """
     Test adding basic OutputNode
     """
     print("\nTest 2: Adding OutputNode")
-    builder = StaticBuilder()
+    builder = StaticBuilder(scope='Build0')
     builder.addInput(10, name="In")
     builder.addInner(3, name="Det")
     o_name = builder.addOutput(name="Out")
@@ -100,13 +104,13 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     self.assertEqual(o1.num_declared_inputs, 0, "The number of inputs of the "
                      "OutputNode has not been assigned correctly")
   
-  @unittest.skipIf(False, "Skipping")
+  @unittest.skipIf(3 not in tests_to_run, "Skipping")
   def test_addDirectedLinks(self):
     """
     Test adding DirectedLinks
     """
     print("\nTest 3: Adding DirectedLinks")
-    builder = StaticBuilder()
+    builder = StaticBuilder(scope='Build0')
     in1 = builder.addInput(10, name="In")
     enc1 = builder.addInner(3, name="Det")
     out1 = builder.addOutput(name="Out")
@@ -127,7 +131,7 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     self.assertIn(2, builder.adj_list[1], "Node 2 has not been added to the "
                   "adjacency list of Node 1")
 
-  @unittest.skipIf(False, "Skipping")
+  @unittest.skipIf(4 not in tests_to_run, "Skipping")
   def test_BuildModel0(self):
     """
     Test building the simplest model possible.
@@ -153,7 +157,7 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
                      out._islot_to_itensor[0].shape.as_list()[-1], 
                      "The input tensors have not been assigned correctly")
     
-  @unittest.skipIf(False, "Skipping")
+  @unittest.skipIf(5 not in tests_to_run, "Skipping")
   def test_BuildModel1(self):
     """
     Test building a model with 2 outputs. Test Cloning an output
@@ -171,7 +175,7 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     
     builder.build()
 
-  @unittest.skipIf(False, "Skipping")
+  @unittest.skipIf(6 not in tests_to_run, "Skipping")
   def test_BuildModel2(self):
     """
     Builds a model with 2 inputs. Test ConcatNode
@@ -180,7 +184,8 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     builder = StaticBuilder("Concat")
     in1 = builder.addInput(10)
     in2 = builder.addInput(20)
-    enc1 = builder.addInner(3, num_islots=2)
+    enc1 = builder.addInner(3,
+                            num_inputs=2)
     out1 = builder.addOutput()
 
     builder.addDirectedLink(in1, enc1, islot=0)
@@ -189,7 +194,7 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     
     builder.build()
     
-  @unittest.skipIf(False, "Skipping")
+  @unittest.skipIf(7 not in tests_to_run, "Skipping")
   def test_BuildModel3(self):
     """
     Try to break it, the algorithm... !! Guess not mdrfkr.
@@ -199,7 +204,7 @@ class StaticModelBuilderBasicTest(tf.test.TestCase):
     in1 = builder.addInput(10)
     in2 = builder.addInput(20)
     enc1 = builder.addInner(3)
-    enc2 = builder.addInner(5, num_islots=2)
+    enc2 = builder.addInner(5, num_inputs=2)
     out1 = builder.addOutput()
     out2 = builder.addOutput()
     

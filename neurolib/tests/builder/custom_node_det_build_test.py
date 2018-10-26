@@ -20,6 +20,10 @@ from neurolib.builders.static_builder import StaticBuilder
 
 # pylint: disable=bad-indentation, no-member, protected-access
 
+NUM_TESTS = 3
+run_up_to_test = 3
+tests_to_run = list(range(run_up_to_test))
+
 class CustomEncoderBuilderBasicTest(tf.test.TestCase):
   """
   """
@@ -28,21 +32,21 @@ class CustomEncoderBuilderBasicTest(tf.test.TestCase):
     """
     tf.reset_default_graph()
     
-  @unittest.skipIf(False, "Skipping")
+  @unittest.skipIf(0 not in tests_to_run, "Skipping")
   def test_init(self):
     """
     Create a CustomNode
     """
-    tf.reset_default_graph()
-    builder = StaticBuilder()
+    print("\nTest 0: Initialization")
+    builder = StaticBuilder(scope='BuildCust')
     builder.createCustomNode(1, 1, name="Custom")
   
-  @unittest.skipIf(False, "Skipping")
+  @unittest.skipIf(1 not in tests_to_run, "Skipping")
   def test_add_encoder0(self):
     """
     Test commit
     """
-    tf.reset_default_graph()
+    print("\nTest 1: Committing")
     builder = StaticBuilder("MyModel")
 
     builder.addInput(10)
@@ -50,21 +54,28 @@ class CustomEncoderBuilderBasicTest(tf.test.TestCase):
     cust_in1 = cust.addInner(3)
     cust_in2 = cust.addInner(4)
     cust.addDirectedLink(cust_in1, cust_in2)
+
+    cust.addInput(islot=0, inode_name=cust_in1, inode_islot=0)
+    cust.addOutput(oslot=0, inode_name=cust_in2, inode_oslot=0)
     cust.commit()
+    
     builder.addOutput()
       
-  @unittest.skipIf(False, "Skipping")
+  @unittest.skipIf(2 not in tests_to_run, "Skipping")
   def test_add_encoder1(self):
     """
     Test build
     """
-    tf.reset_default_graph()
+    print("\nTest 2: Build")
     builder = StaticBuilder("MyModel")
 
     cust = builder.createCustomNode(1, 1, name="Custom")
     cust_in1 = cust.addInner(3)
     cust_in2 = cust.addInner(4)
     cust.addDirectedLink(cust_in1, cust_in2)
+
+    cust.addInput(islot=0, inode_name=cust_in1, inode_islot=0)
+    cust.addOutput(oslot=0, inode_name=cust_in2, inode_oslot=0)
     cust.commit()
      
     in1 = builder.addInput(10)

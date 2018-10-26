@@ -22,7 +22,11 @@ import tensorflow as tf
 from neurolib.models.regression import Regression
 
 # pylint: disable=bad-indentation, no-member, protected-access
-        
+
+NUM_TESTS = 2
+run_up_to_test = 2
+tests_to_run = list(range(run_up_to_test))
+
 class RegressionFullTest(tf.test.TestCase):
   """
   TODO: Write these in terms of self.Assert...
@@ -32,17 +36,20 @@ class RegressionFullTest(tf.test.TestCase):
     """
     tf.reset_default_graph()
 
+  @unittest.skipIf(0 not in tests_to_run, "Skipping")
   def test_init(self):
     """
     Test initialization
     """
     print("\nTest 0: Regression initialization")
     Regression(input_dim=10, output_dim=1)
-    
+
+  @unittest.skipIf(1 not in tests_to_run, "Skipping")
   def test_build(self):
     """
     Test build
     """
+    print("\nTest 1: Regression build")
     model = Regression(input_dim=10, output_dim=1)
     model.build()
 
