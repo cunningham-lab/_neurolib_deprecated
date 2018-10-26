@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # ==============================================================================
-import pydot
 import tensorflow as tf
 # from tensorflow.python.ops import rnn_cell_impl
 
@@ -21,8 +20,7 @@ from neurolib.encoder.anode import ANode
 from neurolib.encoder.sequence import (BasicRNNEvolutionSequence, LSTMEvolutionSequence,
                                        EvolutionSequence)
 from neurolib.encoder.custom import CustomNode
-from neurolib.encoder.input_seq import PlaceholderInputSequence
-from neurolib.encoder.rnn import CustomRNN
+# from neurolib.encoder.rnn import CustomRNN
 from neurolib.encoder.output import OutputNode
 from neurolib.utils.utils import check_name
 from neurolib.builders.static_builder import StaticBuilder
@@ -187,27 +185,27 @@ class SequentialBuilder(StaticBuilder):
     self.nodes[node.name] = self._label_to_node[label] = node
     
     return node.name
-      
-  def declareRNN(self, num_inputs, num_outputs, name):
-    """
-    
-    TODO: Check name
-    """
-    label = self.num_nodes
-    self.num_nodes += 1
-    
-    # Must define here to avoid circular dependencies
-    custom_builder = SequentialBuilder(self.max_steps,
-                                       scope=name,
-                                       batch_size=self.batch_size)
-    cust = CustomRNN(label,
-               num_inputs,
-               num_outputs,
-               builder=custom_builder,
-               name=name)
-    self.custom_encoders[name] = self.nodes[label] = cust
-    self._label_to_node[label] = cust
-    return cust
+#       
+#   def declareRNN(self, num_inputs, num_outputs, name):
+#     """
+#     
+#     TODO: Check name
+#     """
+#     label = self.num_nodes
+#     self.num_nodes += 1
+#     
+#     # Must define here to avoid circular dependencies
+#     custom_builder = SequentialBuilder(self.max_steps,
+#                                        scope=name,
+#                                        batch_size=self.batch_size)
+#     cust = CustomRNN(label,
+#                num_inputs,
+#                num_outputs,
+#                builder=custom_builder,
+#                name=name)
+#     self.custom_encoders[name] = self.nodes[label] = cust
+#     self._label_to_node[label] = cust
+#     return cust
 
   def addDirectedLink(self, node1, node2, oslot=0, islot=0):
     """
@@ -332,8 +330,6 @@ class SequentialBuilder(StaticBuilder):
 
     # Initialize _built_parents for the child node. This is used in the build
     # algorithm below.
-#     node2._parents.append(node1.label)
-#     node1._children.append(node2.label)
     node2._built_parents[node1.label] = False
       
   def _check_items_do_exist(self):
@@ -349,19 +345,6 @@ class SequentialBuilder(StaticBuilder):
     TODO:
     """
     pass
-    
-  def build_dependency_list(self):
-    """
-    """
-    queue = []
-    self.dependency_list
-    self._networks = []
-    for cur_inode in self.input_sequences:
-      cur_inode_label = self.get_label(cur_inode)
-      
-      queue.append(cur_inode_label)
-      while queue:
-        cur_node_label = queue.pop(0)    
     
   def build(self):
     """
